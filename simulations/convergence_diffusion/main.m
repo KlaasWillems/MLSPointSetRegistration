@@ -25,7 +25,7 @@ inputs.tmax = 10;
 inputs.Omega = [-30, -30; 30, 30];
 inputs.flag_plot = 1;
 inputs.its_plot = 2;
-inputs.maxNb = 16;
+inputs.maxNb = 16; % 16 for MLS, 32 for LABFM degree 2, 
 
 inputs.Sinf_fun = @(x,y) zeros(size(x));
 inputs.d2dSinf_fun = @(x,y) zeros(1, 3);
