@@ -16,9 +16,6 @@ dt_target = tmax/Nt;
 t = 0;
 Sf = log(rhof);  
 I = speye(N);
-if inputs_method.flag_plot==1
-    figure(5)
-end
 n=1;
 frameIndex=1;
 

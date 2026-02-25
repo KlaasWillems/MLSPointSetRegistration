@@ -24,7 +24,7 @@ for i = 1:N
     maxDist = max(r);
     hVec(i) = maxDist;
 
-    coeffs = MLS2d.LABFMUtil.labfm(dxis, dyis, maxDist, 2);
+    coeffs = MeshfreePSR.util.LABFM.labfm(dxis, dyis, maxDist, 2);
     % coeffs(:, 1): du/dx
     % coeffs(:, 2): du/dy
     % coeffs(:, 3): du/dxx

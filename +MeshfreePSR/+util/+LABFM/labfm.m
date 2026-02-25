@@ -5,8 +5,8 @@ assert(order >= 2); % We need all first-order and second-order derivatives.
 
 p = (order*order + 3*order)/2;
 
-Xt = MLS2d.LABFMUtil.getMonomials(dxji, dyji, order);
-Wt = MLS2d.LABFMUtil.getBasisFunctions(dxji, dyji, hi, order);
+Xt = MeshfreePSR.util.LABFM.getMonomials(dxji, dyji, order);
+Wt = MeshfreePSR.util.LABFM.getBasisFunctions(dxji, dyji, hi, order);
 
 M = Xt * Wt;
 
