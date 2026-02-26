@@ -1,5 +1,7 @@
-function [x, y, Sf, particlePaths] = mls_main(x, y, rhof, inputs_method)
-%MAIN 
+function [x, y, Sf, particlePaths] = euler_main(x0, y0, rhof0, inputs_method)
+x = x0;
+y = y0;
+rhof = rhof0;
 
 %% initialization
 tmax = inputs_method.tmax;
@@ -16,13 +18,11 @@ dt_target = tmax/Nt;
 t = 0;
 Sf = log(rhof);  
 I = speye(N);
-n=1;
-frameIndex=1;
+n = 1;
+frameIndex = 1;
 
 % Preparation of neighbours and MLS matrices
-neighbors = MeshfreePSR.src.find_neighbors([x,y], inputs_method.maxNb);
-Sstruct = MeshfreePSR.src.build_Sstruct(neighbors);% Prepare sparse system (run over stencils and pre-allocate)
-[Gradx, Grady, ~, Sxx, Syy, Sxy, ~, ~] = MeshfreePSR.src.build_MLSmats(x, y, Sstruct, neighbors);
+[Gradx, Grady, ~, Sxx, Syy, Sxy] = MeshfreePSR.src.computeDiscreteOperators(x, y, inputs_method, inputs_method.meshfreeMethod);
 
 while t<tmax
     
@@ -49,9 +49,7 @@ while t<tmax
     particlePaths(:, 2, n+1) = y(inputs_method.traceParticles);
 
     % Recompute MLS matrices here
-    neighbors = MeshfreePSR.src.find_neighbors([x, y], inputs_method.maxNb);
-    Sstruct = MeshfreePSR.src.build_Sstruct(neighbors);  % Prepare sparse system (run over stencils and pre-allocate)
-    [Gradx, Grady, S, Sxx, Syy, Sxy, ~, ~] = MeshfreePSR.src.build_MLSmats(x, y, Sstruct, neighbors);
+    [Gradx, Grady, S, Sxx, Syy, Sxy] = MeshfreePSR.src.computeDiscreteOperators(x, y, inputs_method, inputs_method.meshfreeMethod);
 
     % Density equation with implicit Euler (Sf = (I - dt*S)\(Sf-dt*S*Sinf)
     Sinf = inputs_method.Sinf_fun(x, y);

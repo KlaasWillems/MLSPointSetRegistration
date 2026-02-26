@@ -1,9 +1,8 @@
-function [Gradx, Grady, S, Sxx, Syy, Sxy, cnd, hVec] = build_MLSLABFMmats(x, y, Sstruct, neighbors)
-%BUILD_MLSMATS 
+function [Gradx, Grady, S, Sxx, Syy, Sxy, cnd, hVec] = build_LABFMmats(x, y, Sstruct, neighbors)
 
 %% initialization
 [nnb, N] = size(neighbors);
-
+minCount = 10;
 arraySize = length(Sstruct.rows);
 vals_dxx = zeros(arraySize, 1);
 vals_dxy = zeros(arraySize, 1);
@@ -20,11 +19,23 @@ for i = 1:N
     dxis = x(neighbors(2:end,i)) - x(i);
     dyis = y(neighbors(2:end,i)) - y(i);
 
+    % Check quadrants. Drop down to third-order interpolation in case the
+    % point is at the boundary of the cloud.
+    q1 = (dxis > 0) & (dyis > 0);
+    q2 = (dxis < 0) & (dyis > 0);
+    q3 = (dxis < 0) & (dyis < 0);
+    q4 = (dxis > 0) & (dyis < 0);    
+    if (sum(q1) > minCount) && (sum(q2) > minCount) && (sum(q3) > minCount) && (sum(q4) > minCount)
+        polynomialDegree = 3;
+    else
+        polynomialDegree = 2;
+    end
+
     r = sqrt(dxis.^2 + dyis.^2);
     maxDist = max(r);
     hVec(i) = maxDist;
 
-    coeffs = MeshfreePSR.util.LABFM.labfm(dxis, dyis, maxDist, 2);
+    coeffs = MeshfreePSR.util.LABFM.labfm(dxis, dyis, maxDist, polynomialDegree);
     % coeffs(:, 1): du/dx
     % coeffs(:, 2): du/dy
     % coeffs(:, 3): du/dxx

@@ -1,11 +1,11 @@
 function [xb,yb,rhof] = generate_gaussian_particles(N,mu,Sigma)
 
 %% initialization
-[V,D]=eig(Sigma);
-Vstar=sqrt(D)*V';
+[V, D] = eig(Sigma);
+Vstar = sqrt(D)*V';
 
 %% generate the initial condition for the standard Gaussian
-[Y,X] = VanDerCorput(N);
+[Y, X] = VanDerCorput(N);
 x = erfinv(2*X(:)-1)*sqrt(2);
 y = erfinv(2*Y(:)-1)*sqrt(2);
 
