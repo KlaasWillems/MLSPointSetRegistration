@@ -2,7 +2,7 @@ function [Gradx, Grady, S, Sxx, Syy, Sxy, cnd, hVec] = build_LABFMmats(x, y, Sst
 
 %% initialization
 [nnb, N] = size(neighbors);
-minCount = 10;
+minCount = 15;
 arraySize = length(Sstruct.rows);
 vals_dxx = zeros(arraySize, 1);
 vals_dxy = zeros(arraySize, 1);

@@ -5,8 +5,6 @@ clear;
 close all;
 rng(10);
 scriptDir = fileparts(mfilename('fullpath'));
-delete(scriptDir + "/data/output/*.mat");
-delete(scriptDir + "/data/figures/*.pdf");
 
 %% Domain and distance function
 Omega = [-3.1,-3.1; 3.1, 3.1];
@@ -15,52 +13,6 @@ C = [0,0];
 dist_body = @(p) MeshfreePSR.util.dist.dcircle(p,C(1),C(2),r);  
 dist_extdom = @(p) MeshfreePSR.util.dist.drectangle(p,Omega(1,1),Omega(2,1),Omega(1,2),Omega(2,2));
 fd = @(p) MeshfreePSR.util.dist.ddiff(dist_extdom(p),dist_body(p));
-
-%% Compute intial and final distribution
-% N = 800;
-% Nfine = 4000;
-% t0 = pi/2;
-% tinf = 3*pi/2;
-% dtheta = pi;
-% iVec = (1:N)';
-% iVecFine = (1:Nfine)';
-% sep = 0.75;
-% std = 0.1;
-% x0 = cos(t0 + dtheta*(iVec-1)/(N-1)) + std*rand(N, 1) - sep;
-% y0 = sin(t0 + dtheta*(iVec-1)/(N-1)) + std*rand(N, 1);
-% xf = cos(tinf + dtheta*(iVecFine-1)/(Nfine-1)) + std*rand(Nfine, 1) + sep;
-% yf = sin(tinf + dtheta*(iVecFine-1)/(Nfine-1)) + std*rand(Nfine, 1);
-
-% Fit GMMS
-% reg_GMM = 1e-4; % this prevents ill-conditioning of the EM procedure
-% nbGMMs = 4;
-% GMMX0 = stat.fitGMM([x0, y0], nbGMMs, reg_GMM);
-% GMMXinfty = stat.fitGMM([xf, yf], nbGMMs, reg_GMM);
-% gm0PDF = @(x,y) arrayfun(@(x0,y0) pdf(GMMX0, [x0 y0]), x, y);
-% gmInftyPDF = @(x,y) arrayfun(@(xf,yf) pdf(GMMXinfty, [xf yf]), x, y);
-% rhof0 = gm0PDF(x0, y0);
-
-% Initial distribution of points and GMM fits
-
-% fontsize = 25;
-% figure(3); clf(3);
-% plot(x0, y0, '.r', 'DisplayName', '$x^0_i$')
-% hold on
-% plot(r*cos(0:0.01:2*pi), r*sin(0:0.01:2*pi), '-r', 'DisplayName', 'Obstacle')
-% fcontour(gm0PDF,[Omega(1, 1), Omega(2, 1)], 'DisplayName', '$\rho_{0}$ (left)')
-% fcontour(gmInftyPDF,[Omega(1, 2), Omega(2, 2)], 'DisplayName', '$\rho_{\infty}$ (right)')
-% legend('Interpreter', 'latex', 'Color', 'white', 'EdgeColor', 'black', 'TextColor', 'black', 'FontSize', 19)
-% xlim([Omega(1, 1), Omega(2, 1)])
-% ylim([Omega(1, 2), Omega(2, 2)])
-% xlabel('x', 'fontsize',fontsize)
-% ylabel('y', 'fontsize',fontsize)
-% ax = gca;
-% set(gca, 'Color', 'none');               % axes background (transparent)
-% set(gca, 'XColor','k', 'YColor','k', 'ZColor','k');    % axes
-% set(findall(gcf,'Type','text'), 'Color','k');          % text objects
-% exportgraphics(gcf, '+MLS2d/+validation/paperFigures/example2/setup.pdf', ...
-%     'ContentType', 'vector', ...   
-%     'BackgroundColor', 'white');
 
 %% Angelo's initial condition
 N = 800;
@@ -101,8 +53,6 @@ rhof0 = gm0PDF(x0, y0);
 
 %% Do simulation
 inputs.tmax = 1.2;
-inputs.dt = 0.0005;
-inputs.maxNb = 20;
 inputs.N = N;
 inputs.flag_plot = 1;
 inputs.its_plot = 20;
@@ -114,16 +64,36 @@ inputs.Cr = r;
 
 % Video settings
 inputs.vid = 1; % make video
-inputs.vidName = scriptDir + "/data/output/"; % make video
 inputs.frameRate = 10;
 inputs.saveNbs = horzcat([0 3 15 30 60], 100:150:2500);
-inputs.saveDir = scriptDir + "/data/output/";
 
 inputs.Sinf_fun = @(x, y) MeshfreePSR.util.stat.eval_logGMM([x, y], GMMXinfty);
 inputs.ginf_fun = @(x, y) gmInftyPDF(x, y);
-save(scriptDir + "/data/output/simSetup.mat", "gm0PDF", "gmInftyPDF");
 
-%%
+%% Simulation with Euler + MLS method
+delete(scriptDir + "/dataEuler/output/*.mat");
+delete(scriptDir + "/dataEuler/figures/*.pdf");
+inputs.dt = 0.0005;
+inputs.meshfreeMethod = 1;
+inputs.maxNb = 20;
+inputs.vidName = scriptDir + "/dataEuler/output/";
+inputs.saveDir = scriptDir + "/dataEuler/output/";
+save(scriptDir + "/dataEuler/output/simSetup.mat", "gm0PDF", "gmInftyPDF");
+
 tic;
-[xn,yn,sfn] = MeshfreePSR.src.mls_main_boundaries(x0, y0, rhof0, inputs);
+[xn,yn,sfn] = MeshfreePSR.src.euler_main_boundaries(x0, y0, rhof0, inputs);
+toc;
+
+%% Simulation with Midpoint + LABFM method
+delete(scriptDir + "/dataMidpoint/output/*.mat");
+delete(scriptDir + "/dataMidpoint/figures/*.pdf");
+inputs.dt = 0.0002;
+inputs.meshfreeMethod = 2;
+inputs.maxNb = 80;
+inputs.vidName = scriptDir + "/dataMidpoint/output/";
+inputs.saveDir = scriptDir + "/dataMidpoint/output/";
+save(scriptDir + "/dataMidpoint/output/simSetup.mat", "gm0PDF", "gmInftyPDF");
+
+tic;
+[xn,yn,sfn] = MeshfreePSR.src.midpoint_main_boundaries(x0, y0, rhof0, inputs);
 toc;

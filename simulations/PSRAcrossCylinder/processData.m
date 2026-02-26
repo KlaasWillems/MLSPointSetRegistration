@@ -1,7 +1,7 @@
 clear;
 scriptDir = fileparts(mfilename('fullpath'));
-files = dir(fullfile(scriptDir + "/data/output/",'saveData*.mat'));
-load(scriptDir + "/data/output/simSetup.mat")
+files = dir(fullfile(scriptDir + "/dataEuler/output/",'saveData*.mat'));
+load(scriptDir + "/dataEuler/output/simSetup.mat")
 
 particleIndices = [20, 619, 787, 749, 34];
 

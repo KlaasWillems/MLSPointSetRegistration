@@ -65,9 +65,10 @@ for repeat = 1:2
     hrho0 = plot(nan, nan, '-', 'Color', 'magenta'); 
     hrhoinf = plot(nan, nan, '--', 'Color','cyan');
     
-    legend([hODE hMLS hLABFM hrho0 hrhoinf], {'ODE45', 'MLS', 'LABFM', '$\rho_0$', '$\rho_{\infty}$'}, 'Interpreter', 'latex', 'Location','best', 'fontsize', fontsize, 'Color', 'white', 'EdgeColor', 'black', 'TextColor', 'black');
+    legend([hODE hMLS hLABFM hrho0 hrhoinf], {'ODE45', 'MLS', 'LABFM', '$\rho_0$', '$\rho_{\infty}$'}, 'Interpreter', 'latex', 'Location', 'southwest', 'fontsize', fontsize, 'Color', 'white', 'EdgeColor', 'black', 'TextColor', 'black');
     xlabel("x",'fontsize',fontsize)
     ylabel("y",'fontsize',fontsize)
+    axis equal
     
     ax = gca;
     ax.FontSize = fontsize;

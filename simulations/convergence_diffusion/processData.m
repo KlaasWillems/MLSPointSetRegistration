@@ -24,12 +24,11 @@ hold off
 set(gca, 'Color', 'none');               % axes background (transparent)
 set(gca, 'XColor','k', 'YColor','k', 'ZColor','k');    % axes
 set(findall(gcf,'Type','text'), 'Color','k');          % text objects
-convergenceFigLocation = fullfile(scriptDir, 'convergence.pdf');
+convergenceFigLocation = fullfile(scriptDir, 'data/convergence.pdf');
 exportgraphics(gcf, convergenceFigLocation, 'ContentType', 'vector', 'BackgroundColor', 'white');
 
 %% Plots paths
 figure(2)
-axis square
 axis equal
 for ind = 1:5:254
     if ind == 1
@@ -68,7 +67,7 @@ set(lg, 'TextColor', 'black', 'FontSize', fontsize);
 ax.XAxisLocation = 'origin';
 ax.YAxisLocation = 'origin';
 ax.Box = 'off';
-pathsFigLocation = fullfile(scriptDir, 'particlePaths.pdf');
+pathsFigLocation = fullfile(scriptDir, 'data/particlePaths.pdf');
 exportgraphics(gcf, pathsFigLocation, 'ContentType', 'vector', 'BackgroundColor', 'white');
 
 %% Plot initial condition
@@ -85,5 +84,5 @@ set(gca, 'Color', 'none');               % axes background (transparent)
 set(gca, 'XColor','k', 'YColor','k', 'ZColor','k');    % axes
 set(findall(gcf,'Type','text'), 'Color','k');          % text objects
 cb.Color = 'k';
-distFigLocation = fullfile(scriptDir, 'initialDistribution.pdf');
+distFigLocation = fullfile(scriptDir, 'data/initialDistribution.pdf');
 exportgraphics(gcf, distFigLocation, 'ContentType', 'vector', 'BackgroundColor', 'white');

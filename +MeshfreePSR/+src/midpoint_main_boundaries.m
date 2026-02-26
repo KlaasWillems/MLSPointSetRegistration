@@ -1,33 +1,25 @@
-function [x, y, Sf] = mls_main_boundaries(x, y, rhof, inputs_method)
-% MAIN 
+function [x, y, Sf] = midpoint_main_boundaries(x0, y0, rhof0, inputs_method)
 
-%% initialization
+%% Initialization
 tmax = inputs_method.tmax;
 dt_target = inputs_method.dt;
-N = size(x,1);
+N = size(x0,1);
 
-%% Time integrate
 Nt = ceil(tmax/dt_target);
 dt_target = tmax/Nt;
 t = 0;
-Sf = log(rhof);  
+Sf = log(rhof0);  
+x = x0;
+y = y0;
 n = 0;
+frameIndex = 1;
 
 particlePaths = zeros(N, 2, 1);
 particlePaths(:, 1, 1) = x;
 particlePaths(:, 2, 1) = y;
 
-frameIndex = 1;
-
-% Initial preparation of ghost particles and sparse matrices
-[xmirror, ymirror, ~, ~] = MeshfreePSR.src.bnd_mirror([x, y], inputs_method.fd);  % Mirror all points w.r.t closest boundary
-[xmirror, ymirror] = MeshfreePSR.src.filter_ghost_particles(x, y, xmirror, ymirror, inputs_method);
-I = isinf(xmirror);
-xfull = [x; xmirror(~I)];
-yfull = [y; ymirror(~I)];
-neighbors = MeshfreePSR.src.find_neighbors([xfull, yfull], inputs_method.maxNb);
-Sstruct = MeshfreePSR.src.build_Sstruct(neighbors);  % Prepare sparse system (run over stencils and pre-allocate)
-[Gradx, Grady, ~, Sxx, Syy, Sxy, ~] = MeshfreePSR.src.build_MLSmats(xfull, yfull, Sstruct, neighbors);
+% Prepare discrete meshfree operators for 
+[Gradx, Grady, ~, Sxx, Syy, Sxy, I, ~, ~] = MeshfreePSR.src.computeDiscreteOperators_boundaries(x, y, inputs_method, inputs_method.meshfreeMethod);
 Sinf = inputs_method.Sinf_fun(x, y);
 SinfFull = vertcat(Sinf, Sinf(~I));
 SfFull = vertcat(Sf, Sf(~I));
@@ -60,32 +52,44 @@ while t<tmax
     end   
     dt = min(tmax-t, dt);
 
-    %% solver   
+    % Check code: what happens to ghost particles that change neibhbours?
+
+    %% solver 
+    dt2 = dt/2;
     
-    % Explict part
+    % Explict part: Move particles and potentially reflect them out of the obstacle
     sx = Gradx*e;
     sy = Grady*e;
-    v = dt*[sx, sy];
+    v = dt2*[sx, sy];
+    [xHalf, yHalf] = MeshfreePSR.src.bnd_reflection([x, y], v(1:N, :), inputs_method.fd);
 
-    % Move particles and potentially reflect them out of the obstacle
+    % Compute meshfree discrete operators at time n+1/2
+    [GradxHalf, GradyHalf, SHalf, ~, ~, ~, I, ~, ~] = MeshfreePSR.src.computeDiscreteOperators_boundaries(xHalf, yHalf, inputs_method, inputs_method.meshfreeMethod);
+
+    % Implicit part: Sf = (I - dt*S)\(Sf-dt*S*Sinf) (solve with implicit Euler)
+    SinfHalf = inputs_method.Sinf_fun(xHalf, yHalf);
+    SinfFullHalf = vertcat(SinfHalf, SinfHalf(~I));
+    SfFull = vertcat(Sf, Sf(~I));
+    A = speye(length(SinfFullHalf)) - dt2*SHalf;
+    b = SfFull - dt2*SHalf*SinfFullHalf;
+    D = spdiags(1./sqrt(sum(abs(A),2)),0,size(A,1),size(A,1));
+    SfFullHalf = D * ((D*A*D) \ (D*b));
+
+    % Explict part: Move particles to x^n+1 and potentially reflect them out of the obstacle
+    e = SinfFullHalf - SfFullHalf;
+    sx = GradxHalf*e;
+    sy = GradyHalf*e;
+    v = dt*[sx, sy];
     [x, y] = MeshfreePSR.src.bnd_reflection([x, y], v(1:N, :), inputs_method.fd);
 
-    % Recompute ghost particles
-    [xmirror, ymirror, ~, ~] = MeshfreePSR.src.bnd_mirror([x, y], inputs_method.fd);  % Mirror all points w.r.t closest boundary
-    [xmirror, ymirror] = MeshfreePSR.src.filter_ghost_particles(x, y, xmirror, ymirror, inputs_method);
-    I = isinf(xmirror);
-    xfull = [x; xmirror(~I)];
-    yfull = [y; ymirror(~I)];
-    neighbors = MeshfreePSR.src.find_neighbors([xfull, yfull], inputs_method.maxNb);
-    Sstruct = MeshfreePSR.src.build_Sstruct(neighbors);  % Prepare sparse system (run over stencils and pre-allocate)
-
-    [Gradx, Grady, S, Sxx, Syy, Sxy, ~] = MeshfreePSR.src.build_MLSmats(xfull, yfull, Sstruct, neighbors);
+    % Compute meshfree discrete operators at time n+1
+    [Gradx, Grady, S, Sxx, Syy, Sxy, I, xmirror, ymirror] = MeshfreePSR.src.computeDiscreteOperators_boundaries(x, y, inputs_method, inputs_method.meshfreeMethod);
 
     % Implicit part: Sf = (I - dt*S)\(Sf-dt*S*Sinf) (solve with implicit Euler)
     Sinf = inputs_method.Sinf_fun(x, y);
     SinfFull = vertcat(Sinf, Sinf(~I));
     SfFull = vertcat(Sf, Sf(~I));
-    A = speye(length(xfull)) - dt*S;
+    A = speye(length(SfFull)) - dt*S;
     b = SfFull - dt*S*SinfFull;
     D = spdiags(1./sqrt(sum(abs(A),2)),0,size(A,1),size(A,1));
     SfFull = D * ((D*A*D) \ (D*b));
