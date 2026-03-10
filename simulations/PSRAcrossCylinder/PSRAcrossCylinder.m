@@ -76,7 +76,7 @@ delete(scriptDir + "/dataEuler/figures/*.pdf");
 inputs.dt = 0.0005;
 inputs.meshfreeMethod = 1;
 inputs.maxNb = 20;
-inputs.vidName = scriptDir + "/dataEuler/output/";
+inputs.vidName = scriptDir + "/dataEuler/output/vid";
 inputs.saveDir = scriptDir + "/dataEuler/output/";
 save(scriptDir + "/dataEuler/output/simSetup.mat", "gm0PDF", "gmInftyPDF");
 
@@ -87,10 +87,10 @@ toc;
 %% Simulation with Midpoint + LABFM method
 delete(scriptDir + "/dataMidpoint/output/*.mat");
 delete(scriptDir + "/dataMidpoint/figures/*.pdf");
-inputs.dt = 0.0002;
-inputs.meshfreeMethod = 2;
-inputs.maxNb = 80;
-inputs.vidName = scriptDir + "/dataMidpoint/output/";
+inputs.dt = 0.0005;
+inputs.meshfreeMethod = 1;
+inputs.maxNb = 20;
+inputs.vidName = scriptDir + "/dataMidpoint/output/vid";
 inputs.saveDir = scriptDir + "/dataMidpoint/output/";
 save(scriptDir + "/dataMidpoint/output/simSetup.mat", "gm0PDF", "gmInftyPDF");
 

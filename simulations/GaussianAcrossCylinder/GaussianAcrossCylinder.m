@@ -60,13 +60,13 @@ tic;
 toc;
 
 %% Do Midpoint + LABFM simulation
-% delete(scriptDir + "/dataMidpoint/output/*.mat");
-% delete(scriptDir + "/dataMidpoint/figures/*.pdf");
-% inputs.saveDir = scriptDir + "/dataMidpoint/output/";
-% inputs.vidName = scriptDir + "/dataMidpoint/output/vid";
-% 
-% inputs.maxNb = 60;
-% inputs.meshfreeMethod = 2;
-% tic;
-% [xn,yn,sfn] = MeshfreePSR.src.euler_main_boundaries(x0, y0, rhof0, inputs);
-% toc;
+delete(scriptDir + "/dataMidpoint/output/*.mat");
+delete(scriptDir + "/dataMidpoint/figures/*.pdf");
+inputs.saveDir = scriptDir + "/dataMidpoint/output/";
+inputs.vidName = scriptDir + "/dataMidpoint/output/vid";
+
+inputs.maxNb = 60;
+inputs.meshfreeMethod = 1;
+tic;
+[xn,yn,sfn] = MeshfreePSR.src.euler_main_boundaries(x0, y0, rhof0, inputs);
+toc;

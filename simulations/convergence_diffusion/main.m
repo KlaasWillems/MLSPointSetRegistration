@@ -73,8 +73,8 @@ for sim = 1:length(Ns)
             inputs.meshfreeMethod = 1; % use MLS and Euler method
             [xn, yn, sfn, particlePaths] = MeshfreePSR.src.euler_main(x0, y0, rhof0, inputs); 
         elseif alg == 2
-            inputs.maxNb = 50; % The higher-order LABFM method needs a lot more neighbours
-            inputs.meshfreeMethod = 2; % use LABFM and Midpoint method
+            inputs.maxNb = 16;
+            inputs.meshfreeMethod = 1; % use MLS and Midpoint method
             [xn, yn, sfn, particlePaths] = MeshfreePSR.src.midpoint_main(x0, y0, rhof0, inputs);
         end
     

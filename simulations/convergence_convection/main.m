@@ -38,22 +38,21 @@ end
 % Time steps for characteristics
 
 
-for repeat = [1 , 2] % repeat convergence analysis for two final times
+for repeat = [1, 2] % repeat convergence analysis for two final times
     if repeat == 1
         inputs.tmax = 4.5;
     elseif repeat == 2
-        inputs.tmax = 10.0;
+        inputs.tmax = 6.5;
     end
     Nt = 100;
     tspan = linspace(0, inputs.tmax, Nt);
 
-    Ns = 2.^[7; 8; 9; 10];
-    dts = (2^4)./Ns;
+    Ns = 2.^[7; 8; 9; 10; 11];
+    dts = (2^5)./Ns;
     algs = 2;
     ErrPDF = zeros(length(Ns), algs);
     ErrPosX = zeros(length(Ns), algs);
     ErrPosY = zeros(length(Ns), algs);
-
 
     for simN = 1:length(Ns)
         
@@ -70,7 +69,7 @@ for repeat = [1 , 2] % repeat convergence analysis for two final times
     
         % Integrate exact characteristic equation
         ODE45ParticleTrajectories = zeros(Ns(simN), 2, Nt);
-        options = odeset('RelTol',1e-9,'AbsTol',1e-9);
+        options = odeset('RelTol',1e-10,'AbsTol',1e-10);
         for pi = 1:Ns(simN)
             [~, xODE] = ode45(@(t,x) characteristic(t, x, mu0, mu1, std0, std1), tspan, [x0(pi); y0(pi)]);
             ODE45ParticleTrajectories(pi, :, :) = xODE.';
@@ -82,8 +81,8 @@ for repeat = [1 , 2] % repeat convergence analysis for two final times
     
             % Do MLS simulation
             if simAlg == 1
-                inputs.maxNb = 50; % The higher-order LABFM method needs a lot more neighbours
-                inputs.meshfreeMethod = 2; % use LABFM and Midpoint method
+                inputs.maxNb = 16;
+                inputs.meshfreeMethod = 1; % use MLS and Midpoint method
                 [xn, yn, sfn, particlePaths] = MeshfreePSR.src.midpoint_main(x0, y0, rhof0, inputs); 
                 if (simN == 2)
                     LABFMParticlePaths = particlePaths;
