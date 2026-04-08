@@ -1,5 +1,17 @@
 function [x, y, Sf] = midpoint_main_boundaries(x0, y0, rhof0, inputs_method)
 
+% Precompute fcontour
+% fcontour(@(x, y) inputs_method.ginf_fun(x, y) ,[[inputs_method.Omega(1, 1) inputs_method.Omega(2, 1)] [inputs_method.Omega(1, 2) inputs_method.Omega(2, 2)]])
+% domain rectangle
+xmin = inputs_method.Omega(1,1);
+xmax = inputs_method.Omega(2,1);
+ymin = inputs_method.Omega(1,2);
+ymax = inputs_method.Omega(2,2);
+nx = 300;
+ny = 300;
+[xg, yg] = meshgrid(linspace(xmin, xmax, nx), linspace(ymin, ymax, ny));
+Fg = inputs_method.ginf_fun(xg, yg);
+
 %% Initialization
 tmax = inputs_method.tmax;
 dt_target = inputs_method.dt;
@@ -25,6 +37,7 @@ SinfFull = vertcat(Sinf, Sinf(~I));
 SfFull = vertcat(Sf, Sf(~I));
 assert(all(~isinf(SinfFull)));
 
+tic;
 while t<tmax 
 
 
@@ -114,7 +127,7 @@ while t<tmax
         scatter(x, y, sz, exp(Sf), 'filled');
         scatter(xmirror, ymirror, sz, '.r');
         quiver(x, y, sx(1:N), sy(1:N))
-        fcontour(@(x, y) inputs_method.ginf_fun(x, y) ,[[inputs_method.Omega(1, 1) inputs_method.Omega(2, 1)] [inputs_method.Omega(1, 2) inputs_method.Omega(2, 2)]])
+        contour(xg, yg, Fg, 5);
         xlim([inputs_method.Omega(1, 1) inputs_method.Omega(2, 1)])
         ylim([inputs_method.Omega(1, 2) inputs_method.Omega(2, 2)])
 
@@ -137,6 +150,7 @@ while t<tmax
     t = t + dt;
     n = n + 1
 end
+toc;
 
 if inputs_method.vid
     writerObj = VideoWriter(inputs_method.vidName);

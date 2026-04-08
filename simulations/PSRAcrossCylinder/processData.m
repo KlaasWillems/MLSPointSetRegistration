@@ -1,8 +1,10 @@
 clear;
 scriptDir = fileparts(mfilename('fullpath'));
 close all;
+load('DistributionData.mat');
 
-for algFolder = ["/dataEuler", "/dataMidpoint"]
+% Loop over figures
+for algFolder = ["/dataGMM", "/dataKDE"]
     files = dir(fullfile(scriptDir + algFolder + "/output/",'saveData*.mat'));
     load(scriptDir + algFolder + "/output/simSetup.mat");
 
@@ -17,7 +19,7 @@ for algFolder = ["/dataEuler", "/dataMidpoint"]
     finalFile = scriptDir + algFolder + "/output/" + files(idx).name;
     load(finalFile);
     
-    particleIndices = [20, 25, 619, 787, 749, 34];
+    particleIndices = [20, 25, 219, 387, 349, 34];
 
     %% Plot paths
     close all;
@@ -28,8 +30,15 @@ for algFolder = ["/dataEuler", "/dataMidpoint"]
     plot(inputs_method.C(1) + inputs_method.Cr*cos(rad), inputs_method.C(2) + inputs_method.Cr*sin(rad), '-r' ,'DisplayName', 'Obstacle')
     hold on
     scatter(x, y, sz, 'red', 'filled', 'DisplayName', '$x^n_i$');
-    fcontour(gm0PDF, [inputs_method.Omega(1, 1), inputs_method.Omega(2, 1)], 'DisplayName', '$\rho_{0}$ (left)')
-    fcontour(gmInftyPDF, [inputs_method.Omega(1, 2), inputs_method.Omega(2, 2)], 'DisplayName', '$\rho_{\infty}$ (right)')
+    % fcontour(gm0PDF, [inputs_method.Omega(1, 1), inputs_method.Omega(2, 1)], 'DisplayName', '$\rho_{0}$ (left)')
+    % fcontour(gmInftyPDF, [inputs_method.Omega(1, 2), inputs_method.Omega(2, 2)], 'DisplayName', '$\rho_{\infty}$ (right)')
+    if strcmp(algFolder, "/dataGMM")
+        contour(xg, yg, FGMM0, 5, 'DisplayName', '$\rho_{0}$ (left)');
+        contour(xg, yg, FGMMInf, 5, 'DisplayName', '$\rho_{\infty}$ (right)');
+    else
+        contour(xg, yg, FGMM0KDE, 5, 'DisplayName', '$\rho_{0}$ (left)');
+        contour(xg, yg, FGMMInfKDE, 5, 'DisplayName', '$\rho_{\infty}$ (right)');
+    end
     for i = 1:length(particleIndices)
         pIndex = particleIndices(i);
         if i == 1
@@ -66,8 +75,13 @@ for algFolder = ["/dataEuler", "/dataMidpoint"]
         scatter(x, y, sz, exp(Sf), 'filled', 'DisplayName', '$x^n_i$');
         % scatter(xmirror, ymirror, sz, '.r');
         % quiver(x, y, sx, sy)
-        fcontour(gm0PDF, [inputs_method.Omega(1, 1), inputs_method.Omega(2, 1)], 'DisplayName', '$\rho_{0}$ (left)')
-        fcontour(gmInftyPDF, [inputs_method.Omega(1, 2), inputs_method.Omega(2, 2)], 'DisplayName', '$\rho_{\infty}$ (right)')
+        if strcmp(algFolder, "/dataGMM")
+            contour(xg, yg, FGMM0, 5, 'DisplayName', '$\rho_{0}$ (left)');
+            contour(xg, yg, FGMMInf, 5, 'DisplayName', '$\rho_{\infty}$ (right)');
+        else
+            contour(xg, yg, FGMM0KDE, 5, 'DisplayName', '$\rho_{0}$ (left)');
+            contour(xg, yg, FGMMInfKDE, 5, 'DisplayName', '$\rho_{\infty}$ (right)');
+        end
         cb = colorbar;
         cb.Color = 'k';                        % sets tick labels to black
         cb.Label.Color = 'k';                  % sets label text to black (if any)
