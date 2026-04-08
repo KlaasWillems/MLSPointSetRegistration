@@ -3,3 +3,6 @@
 *.avi
 *.asv
 python/env/*
+*.egg-info/
+*__pycache__/
+python/4_GMM.ipynb
