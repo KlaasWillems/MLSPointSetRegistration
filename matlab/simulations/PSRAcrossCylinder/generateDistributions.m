@@ -37,6 +37,12 @@ gmm0 = MeshfreePSR.util.stat.fitGMM([x0, y0], nbGMMs, reg_GMM);
 gmmInf = MeshfreePSR.util.stat.fitGMM([xf, yf], nbGMMs, reg_GMM);
 gmm0_fun = @(x,y) reshape( pdf(gmm0, [x(:) y(:)]) , size(x));
 gmmInfty_fun = @(x,y) reshape( pdf(gmmInf, [x(:) y(:)]) , size(x));
+gmm0Struct.ComponentProportion = gmm0.ComponentProportion;
+gmm0Struct.mu = gmm0.mu;
+gmm0Struct.Sigma = gmm0.Sigma;
+gmmInfStruct.ComponentProportion = gmmInf.ComponentProportion;
+gmmInfStruct.mu = gmmInf.mu;
+gmmInfStruct.Sigma = gmmInf.Sigma;
 
 %% Precomputed fcontour
 Omega = [-3.1,-3.1; 3.1, 3.1];

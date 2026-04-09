@@ -57,6 +57,7 @@ for algFolder = ["/dataGMM", "/dataKDE"]
     ax = gca;
     ax.FontSize = fontsize;
     pdfFile = scriptDir + algFolder + "/figures/" + "Paths" + n + ".pdf";
+    axis equal;
     exportgraphics(gcf, pdfFile, 'ContentType', 'vector', 'BackgroundColor', 'white');
     
     %% Plot distribution
@@ -97,6 +98,7 @@ for algFolder = ["/dataGMM", "/dataKDE"]
         set(gca, 'XColor','k', 'YColor','k', 'ZColor','k');    % axes
         set(findall(gcf,'Type','text'), 'Color','k');          % text objects
         pdfFile = scriptDir + algFolder + "/figures/" + "plot" + n + ".pdf";
+        axis equal;
         exportgraphics(gcf, pdfFile, 'ContentType', 'vector', 'BackgroundColor', 'white');
 
         filepath

@@ -1,5 +1,7 @@
-import torch
 from math import sqrt 
+import torch
+import scipy.io
+import numpy as np
 
 class SimulationParameters:
     def __init__(self, dt, num_steps, weightsXinf, mu_Xinf, inv_covariances_T, det_T, R):
@@ -33,6 +35,33 @@ def compute_log_density_gradient(positions, weights, means, inv_covariances, det
     grad_log_p = grad_p_final / (p_final + 1e-10)
     
     return grad_log_p
+
+def loadMATLABGMM(filename, varName, device):
+
+    # Load the .mat file
+    mat = scipy.io.loadmat(filename, struct_as_record=False, squeeze_me=True)
+    # print(mat.keys())
+    gmm = mat[varName]
+
+    # Extract parameters
+    weights = np.array(gmm.ComponentProportion)   # shape: (K,)
+    means = np.array(gmm.mu)                      # shape: (K, D)
+    covariances = np.array(gmm.Sigma)             # shape: (D, D, K) or (K, D, D)
+
+    # Ensure covariance shape is (K, D, D)
+    if covariances.shape[0] != weights.shape[0]:
+        covariances = np.transpose(covariances, (2, 0, 1))
+
+    # Convert to PyTorch tensors
+    weights_torch = torch.tensor(weights, dtype=torch.float32, device=device)
+    means_torch = torch.tensor(means, dtype=torch.float32, device=device)
+    covariances_torch = torch.tensor(covariances, dtype=torch.float32, device=device)
+
+    # Print shapes
+    # print("Weights:", weights_torch)        # (K,)
+    # print("Means:", means_torch)            # (K, D)
+    # print("Covariances:", covariances_torch)  # (K, D, D)
+    return weights_torch, means_torch, covariances_torch
 
 def sample_gmm_efficient(weights, means, covs, n_samples):
     K, D = means.shape
