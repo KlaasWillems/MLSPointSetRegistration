@@ -4,7 +4,7 @@ import scipy.io
 import numpy as np
 
 class SimulationParameters:
-    def __init__(self, dt, num_steps, weightsXinf, mu_Xinf, inv_covariances_T, det_T, R):
+    def __init__(self, dt, num_steps, weightsXinf, mu_Xinf, inv_covariances_T, det_T, R, small_region_radius):
         self.dt = dt
         self.num_steps = num_steps
         self.weightsXinf = weightsXinf
@@ -12,6 +12,7 @@ class SimulationParameters:
         self.inv_covariances_T = inv_covariances_T
         self.det_T = det_T
         self.R = R
+        self.small_region_radius = small_region_radius
 
 # ─── Function to compute log-density gradient of final GMM ─────
 def compute_log_density_gradient(positions, weights, means, inv_covariances, det, device):
@@ -82,8 +83,23 @@ def sample_gmm_efficient(weights, means, covs, n_samples):
 
     return samples
 
+def computeMasks(positions, centers, radius):
+    num_particles = positions.shape[0]
+    num_centers = centers.shape[0]
+    masks = torch.empty((num_particles, num_centers), dtype=torch.bool, device=positions.device)
+    
+    for j in range(num_centers):
+        center = centers[j]
+        dist_squared = torch.sum((positions - center) ** 2, dim=1)
+        masks[:, j] = dist_squared < radius ** 2
+    
+    return masks
+
 # ─── Main simulation loop ─────
-def doSimulation(positions, masks, avg_positions, simParams, device):
+def doSimulation(positions, centers, simParams, device):
+    num_centers = centers.shape[0]
+    avg_positions = []
+    
     for i in range(simParams.num_steps):
         
         # Compute drift = ∇ log p_final(x)
@@ -106,15 +122,32 @@ def doSimulation(positions, masks, avg_positions, simParams, device):
         if inside.any():
             new_positions[inside] = 1.005 * simParams.R * new_positions[inside] / norms_new[inside].unsqueeze(1)
         
-        positions = new_positions
+        mask = computeMasks(positions, centers, simParams.small_region_radius)
+        newMask = computeMasks(new_positions, centers, simParams.small_region_radius)
+        particlesPerCircle = mask.sum(dim=0)
+        pIn = newMask & (~mask)  # particles that entered a circle
+        pOut = mask & (~newMask)  # particles that left a circle
         
-        # Track average position of selected particles
-        avg_pos = (masks.float().T @ positions) / masks.float().sum(dim=0).clamp(min=1).unsqueeze(1)
-        avg_positions.append(avg_pos)
+        # Update position of circles
+        for center in range(num_centers):
+            if particlesPerCircle[center].item() > 0:
+                dOut = new_positions[pOut[:, center], :] - positions[pOut[:, center], :]
+                dIn = new_positions[pIn[:, center], :] - positions[pIn[:, center], :]
+                
+                tempVel = (new_positions[pOut[:, center], :] - positions[pOut[:, center], :]).sum(dim=0) - (new_positions[pIn[:, center], :] - positions[pIn[:, center], :]).sum(dim=0)
+                centers[center, :] += tempVel / particlesPerCircle[center].item()
+            else:
+                print(f"No particles in center: {center} at time step {i}")
+
+        avg_positions.append(centers.clone())
         
         if i % 50 == 0:  # reduced printing frequency
             drift_norms = torch.norm(drift, dim=1)
             print(f"t = {i * simParams.dt:.4f}  |  Max drift: {drift_norms.max().item():.4f}  |  Mean drift: {drift_norms.mean().item():.4f}")
+            
+        # Update positions for next iteration
+        positions = new_positions
+        
     final_positions = positions.cpu().numpy()
     big_tensor = torch.stack(avg_positions)
 
