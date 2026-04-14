@@ -4,7 +4,7 @@ import scipy.io
 import numpy as np
 
 class SimulationParameters:
-    def __init__(self, dt, num_steps, weightsXinf, mu_Xinf, inv_covariances_T, det_T, R, small_region_radius):
+    def __init__(self, dt, num_steps, weightsXinf, mu_Xinf, inv_covariances_T, det_T, R, reflectiveObject, small_region_radius):
         self.dt = dt
         self.num_steps = num_steps
         self.weightsXinf = weightsXinf
@@ -12,6 +12,7 @@ class SimulationParameters:
         self.inv_covariances_T = inv_covariances_T
         self.det_T = det_T
         self.R = R
+        self.reflectiveObject = reflectiveObject
         self.small_region_radius = small_region_radius
 
 # ─── Function to compute log-density gradient of final GMM ─────
@@ -83,42 +84,6 @@ def sample_gmm_efficient(weights, means, covs, n_samples):
 
     return samples
 
-import torch
-
-def line_circle_intersections(X1, X2, C, R):
-    # X1, X2: (N, 2)
-    # C: (2,) or (1,2)
-    # R: float
-
-    d = X2 - X1                    # (N, 2)
-    f = X1 - C                     # (N, 2)
-
-    a = (d * d).sum(dim=1)         # (N,)
-    b = 2 * (f * d).sum(dim=1)     # (N,)
-    c = (f * f).sum(dim=1) - R**2  # (N,)
-
-    # Solve quadratic: t = (-b ± sqrt(b^2 - 4ac)) / (2a)
-    disc = b**2 - 4*a*c            # (N,)
-    sqrt_disc = torch.sqrt(disc)
-
-    t1 = (-b - sqrt_disc) / (2*a)
-    t2 = (-b + sqrt_disc) / (2*a)
-
-    # Because we KNOW there is exactly one valid intersection
-    # we choose the t that lies in (0, 1]
-    t = torch.where((t1 > 0) & (t1 <= 1), t1, t2)
-
-    # Compute intersection points
-    P = X1 + d * t.unsqueeze(1)     # (N, 2)
-
-    return P
-
-def normAtIntersection(P, C):
-    eps = 0.0
-    dnOut = P - C
-    dnNormOut = torch.norm(dnOut, dim=1, keepdim=True)
-    return dnOut / (dnNormOut + eps);
-
 def computeMasks(positions, centers, radius):
     num_particles = positions.shape[0]
     num_centers = centers.shape[0]
@@ -133,8 +98,10 @@ def computeMasks(positions, centers, radius):
 
 # ─── Main simulation loop ─────
 def doSimulation(positions, centers, simParams, device):
+    reflectionVar = 1.002
     num_centers = centers.shape[0]
-    avg_positions = []
+    avg_positions = torch.empty((simParams.num_steps, num_centers, 2), dtype=torch.float32, device=device)
+    amountOfParticlesPerCircle = torch.empty((simParams.num_steps, num_centers), dtype=torch.int32, device=device)
     
     for i in range(simParams.num_steps):
         
@@ -152,41 +119,34 @@ def doSimulation(positions, centers, simParams, device):
         noise = sqrt(2) * sqrt(simParams.dt) * torch.randn_like(positions)
         new_positions = positions + drift * simParams.dt + noise
         
-        # Reflect boundary condition
-        # norms_new = torch.norm(new_positions, dim=1)
-        # inside = norms_new < simParams.R
-        # if inside.any():
-        #     new_positions[inside] = 1.005 * simParams.R * new_positions[inside] / norms_new[inside].unsqueeze(1)
+        # Reflect particles
+        norms_new = torch.norm(new_positions, dim=1)
+        inside = norms_new < simParams.R
+        if inside.any() and simParams.reflectiveObject:
+            new_positions[inside] = reflectionVar * simParams.R * new_positions[inside] / norms_new[inside].unsqueeze(1)
         
         mask = computeMasks(positions, centers, simParams.small_region_radius)
-        newMask = computeMasks(new_positions, centers, simParams.small_region_radius)
+        driftOfCircles = compute_log_density_gradient(centers, simParams.weightsXinf, simParams.mu_Xinf, simParams.inv_covariances_T, simParams.det_T, device)  # (2,)
         particlesPerCircle = mask.sum(dim=0)
-        pIn = newMask & (~mask)  # particles that entered a circle
-        pOut = mask & (~newMask)  # particles that left a circle
         
         # Update position of circles
         for center in range(num_centers):
             if particlesPerCircle[center].item() > 0:
-                # Old code
-                # dOut = new_positions[pOut[:, center], :] - positions[pOut[:, center], :]
-                # dIn = new_positions[pIn[:, center], :] - positions[pIn[:, center], :]
-                # tempVel = dOut.sum(dim=0) - dIn.sum(dim=0)
-                # centers[center, :] += tempVel / particlesPerCircle[center].item()
-
-                intersectPointsOut = line_circle_intersections(positions[pOut[:, center], :], new_positions[pOut[:, center], :], centers[center, :], simParams.small_region_radius)
-                intersectPointsIn = line_circle_intersections(positions[pIn[:, center], :], new_positions[pIn[:, center], :], centers[center, :], simParams.small_region_radius)
-                nOut = normAtIntersection(intersectPointsOut, centers[center, :])
-                nIn = normAtIntersection(intersectPointsIn, centers[center, :])
-                dOut = new_positions[pOut[:, center], :] - positions[pOut[:, center], :]
-                dIn = new_positions[pIn[:, center], :] - positions[pIn[:, center], :]
-                tempVelOut = (dOut * nOut).sum(dim=1, keepdim=True)*nOut
-                tempVelInt = (dIn * nIn).sum(dim=1, keepdim=True)*nIn
-                centers[center, :] += (tempVelOut.sum(dim=0) - tempVelInt.sum(dim=0)) / particlesPerCircle[center].item()
+                shifts = positions[mask[:, center], :] - centers[center, :]  # (num_particles_in_circle, 2)
+                meanShiftVector = shifts.mean(dim=0)  # (, 2)
+                centers[center, :] += simParams.dt*( driftOfCircles[center, :] - 4*meanShiftVector/(simParams.small_region_radius**2))
             else:
                 print(f"No particles in center: {center} at time step {i}")
+                
+        # Reflect circles
+        norms_new = torch.norm(centers, dim=1)
+        inside = norms_new < simParams.R
+        if inside.any() and simParams.reflectiveObject:
+            centers[inside] = reflectionVar * simParams.R * centers[inside] / norms_new[inside].unsqueeze(1)
 
-        avg_positions.append(centers.clone())
-        
+        amountOfParticlesPerCircle[i, :] = particlesPerCircle
+        avg_positions[i, :, :] = centers.clone()
+
         if i % 50 == 0:  # reduced printing frequency
             drift_norms = torch.norm(drift, dim=1)
             print(f"t = {i * simParams.dt:.4f}  |  Max drift: {drift_norms.max().item():.4f}  |  Mean drift: {drift_norms.mean().item():.4f}")
@@ -195,6 +155,5 @@ def doSimulation(positions, centers, simParams, device):
         positions = new_positions
         
     final_positions = positions.cpu().numpy()
-    big_tensor = torch.stack(avg_positions)
 
-    return final_positions, big_tensor
+    return final_positions, avg_positions, amountOfParticlesPerCircle.cpu().numpy()
