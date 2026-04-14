@@ -83,6 +83,42 @@ def sample_gmm_efficient(weights, means, covs, n_samples):
 
     return samples
 
+import torch
+
+def line_circle_intersections(X1, X2, C, R):
+    # X1, X2: (N, 2)
+    # C: (2,) or (1,2)
+    # R: float
+
+    d = X2 - X1                    # (N, 2)
+    f = X1 - C                     # (N, 2)
+
+    a = (d * d).sum(dim=1)         # (N,)
+    b = 2 * (f * d).sum(dim=1)     # (N,)
+    c = (f * f).sum(dim=1) - R**2  # (N,)
+
+    # Solve quadratic: t = (-b ± sqrt(b^2 - 4ac)) / (2a)
+    disc = b**2 - 4*a*c            # (N,)
+    sqrt_disc = torch.sqrt(disc)
+
+    t1 = (-b - sqrt_disc) / (2*a)
+    t2 = (-b + sqrt_disc) / (2*a)
+
+    # Because we KNOW there is exactly one valid intersection
+    # we choose the t that lies in (0, 1]
+    t = torch.where((t1 > 0) & (t1 <= 1), t1, t2)
+
+    # Compute intersection points
+    P = X1 + d * t.unsqueeze(1)     # (N, 2)
+
+    return P
+
+def normAtIntersection(P, C):
+    eps = 0.0
+    dnOut = P - C
+    dnNormOut = torch.norm(dnOut, dim=1, keepdim=True)
+    return dnOut / (dnNormOut + eps);
+
 def computeMasks(positions, centers, radius):
     num_particles = positions.shape[0]
     num_centers = centers.shape[0]
@@ -117,10 +153,10 @@ def doSimulation(positions, centers, simParams, device):
         new_positions = positions + drift * simParams.dt + noise
         
         # Reflect boundary condition
-        norms_new = torch.norm(new_positions, dim=1)
-        inside = norms_new < simParams.R
-        if inside.any():
-            new_positions[inside] = 1.005 * simParams.R * new_positions[inside] / norms_new[inside].unsqueeze(1)
+        # norms_new = torch.norm(new_positions, dim=1)
+        # inside = norms_new < simParams.R
+        # if inside.any():
+        #     new_positions[inside] = 1.005 * simParams.R * new_positions[inside] / norms_new[inside].unsqueeze(1)
         
         mask = computeMasks(positions, centers, simParams.small_region_radius)
         newMask = computeMasks(new_positions, centers, simParams.small_region_radius)
@@ -131,11 +167,21 @@ def doSimulation(positions, centers, simParams, device):
         # Update position of circles
         for center in range(num_centers):
             if particlesPerCircle[center].item() > 0:
+                # Old code
+                # dOut = new_positions[pOut[:, center], :] - positions[pOut[:, center], :]
+                # dIn = new_positions[pIn[:, center], :] - positions[pIn[:, center], :]
+                # tempVel = dOut.sum(dim=0) - dIn.sum(dim=0)
+                # centers[center, :] += tempVel / particlesPerCircle[center].item()
+
+                intersectPointsOut = line_circle_intersections(positions[pOut[:, center], :], new_positions[pOut[:, center], :], centers[center, :], simParams.small_region_radius)
+                intersectPointsIn = line_circle_intersections(positions[pIn[:, center], :], new_positions[pIn[:, center], :], centers[center, :], simParams.small_region_radius)
+                nOut = normAtIntersection(intersectPointsOut, centers[center, :])
+                nIn = normAtIntersection(intersectPointsIn, centers[center, :])
                 dOut = new_positions[pOut[:, center], :] - positions[pOut[:, center], :]
                 dIn = new_positions[pIn[:, center], :] - positions[pIn[:, center], :]
-                
-                tempVel = (new_positions[pOut[:, center], :] - positions[pOut[:, center], :]).sum(dim=0) - (new_positions[pIn[:, center], :] - positions[pIn[:, center], :]).sum(dim=0)
-                centers[center, :] += tempVel / particlesPerCircle[center].item()
+                tempVelOut = (dOut * nOut).sum(dim=1, keepdim=True)*nOut
+                tempVelInt = (dIn * nIn).sum(dim=1, keepdim=True)*nIn
+                centers[center, :] += (tempVelOut.sum(dim=0) - tempVelInt.sum(dim=0)) / particlesPerCircle[center].item()
             else:
                 print(f"No particles in center: {center} at time step {i}")
 
