@@ -4,7 +4,7 @@ import scipy.io
 import numpy as np
 
 class SimulationParameters:
-    def __init__(self, dt, num_steps, weightsXinf, mu_Xinf, inv_covariances_T, det_T, R, reflectiveObject, small_region_radius):
+    def __init__(self, dt, num_steps, weightsXinf, mu_Xinf, inv_covariances_T, det_T, R, reflectiveObject, small_region_radius, score):
         self.dt = dt
         self.num_steps = num_steps
         self.weightsXinf = weightsXinf
@@ -14,6 +14,7 @@ class SimulationParameters:
         self.R = R
         self.reflectiveObject = reflectiveObject
         self.small_region_radius = small_region_radius
+        self.score = score
 
 # ─── Function to compute log-density gradient of final GMM ─────
 def compute_log_density_gradient(positions, weights, means, inv_covariances, det, device):
@@ -96,8 +97,16 @@ def computeMasks(positions, centers, radius):
     
     return masks
 
-# ─── Main simulation loop ─────
 def doSimulation(positions, centers, simParams, device):
+    if simParams.score == 'AngeloScore':
+        return doSimulationAngelo(positions, centers, simParams, device)
+    elif simParams.score == 'KlaasScore':
+        return doSimulationKlaas(positions, centers, simParams, device) 
+    else:
+        raise ValueError(f"Unknown algorithm: {simParams.alg}") 
+
+# ─── Main simulation loop ─────
+def doSimulationAngelo(positions, centers, simParams, device):
     reflectionVar = 1.002
     num_centers = centers.shape[0]
     avg_positions = torch.empty((simParams.num_steps, num_centers, 2), dtype=torch.float32, device=device)
@@ -159,7 +168,7 @@ def doSimulation(positions, centers, simParams, device):
     return final_positions, avg_positions, amountOfParticlesPerCircle.cpu().numpy()
 
 # ─── Main simulation loop ─────
-def doSimulationTry(positions, centers, simParams, device):
+def doSimulationKlaas(positions, centers, simParams, device):
     reflectionVar = 1.002
     num_centers = centers.shape[0]
     avg_positions = torch.empty((simParams.num_steps, num_centers, 2), dtype=torch.float32, device=device)
