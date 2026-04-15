@@ -157,3 +157,67 @@ def doSimulation(positions, centers, simParams, device):
     final_positions = positions.cpu().numpy()
 
     return final_positions, avg_positions, amountOfParticlesPerCircle.cpu().numpy()
+
+# ─── Main simulation loop ─────
+def doSimulationTry(positions, centers, simParams, device):
+    reflectionVar = 1.002
+    num_centers = centers.shape[0]
+    avg_positions = torch.empty((simParams.num_steps, num_centers, 2), dtype=torch.float32, device=device)
+    amountOfParticlesPerCircle = torch.empty((simParams.num_steps, num_centers), dtype=torch.int32, device=device)
+    
+    for i in range(simParams.num_steps):
+        
+        # Compute drift = ∇ log p_final(x)
+        drift = compute_log_density_gradient(
+            positions,
+            simParams.weightsXinf,
+            simParams.mu_Xinf,
+            simParams.inv_covariances_T,
+            simParams.det_T, 
+            device
+        )
+        
+        # Add noise
+        noise = sqrt(2) * sqrt(simParams.dt) * torch.randn_like(positions)
+        new_positionsTilde = positions + noise
+        
+        # Reflect particles
+        # norms_new = torch.norm(new_positions, dim=1)
+        # inside = norms_new < simParams.R
+        # if inside.any() and simParams.reflectiveObject:
+        #     new_positions[inside] = reflectionVar * simParams.R * new_positions[inside] / norms_new[inside].unsqueeze(1)
+        
+        mask = computeMasks(new_positionsTilde, centers, simParams.small_region_radius)
+        driftOfCircles = compute_log_density_gradient(centers, simParams.weightsXinf, simParams.mu_Xinf, simParams.inv_covariances_T, simParams.det_T, device)  # (2,)
+        particlesPerCircle = mask.sum(dim=0)
+        
+        # Update position of circles
+        for center in range(num_centers):
+            if particlesPerCircle[center].item() > 0:
+                meanBackwardDrift = (new_positionsTilde[mask[:, center], :] - positions[mask[:, center], :]).mean(dim=0) / simParams.dt
+                centers[center, :] += simParams.dt*( driftOfCircles[center, :] + meanBackwardDrift/2)
+            else:
+                print(f"No particles in center: {center} at time step {i}")
+                
+        # Add drift
+        new_positions = new_positionsTilde + drift * simParams.dt
+                
+        # Reflect circles
+        # norms_new = torch.norm(centers, dim=1)
+        # inside = norms_new < simParams.R
+        # if inside.any() and simParams.reflectiveObject:
+        #     centers[inside] = reflectionVar * simParams.R * centers[inside] / norms_new[inside].unsqueeze(1)
+
+        amountOfParticlesPerCircle[i, :] = particlesPerCircle
+        avg_positions[i, :, :] = centers.clone()
+
+        if i % 50 == 0:  # reduced printing frequency
+            drift_norms = torch.norm(drift, dim=1)
+            print(f"t = {i * simParams.dt:.4f}  |  Max drift: {drift_norms.max().item():.4f}  |  Mean drift: {drift_norms.mean().item():.4f}")
+            
+        # Update positions for next iteration
+        positions = new_positions
+        
+    final_positions = positions.cpu().numpy()
+
+    return final_positions, avg_positions, amountOfParticlesPerCircle.cpu().numpy()
