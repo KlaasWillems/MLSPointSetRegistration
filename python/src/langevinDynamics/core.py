@@ -107,7 +107,7 @@ def doSimulation(positions, centers, simParams, device):
 
 # ─── Main simulation loop ─────
 def doSimulationAngelo(positions, centers, simParams, device):
-    reflectionVar = 1.002
+    reflectionVar = 1.05  # 1.01: particles stick to the border. 
     num_centers = centers.shape[0]
     avg_positions = torch.empty((simParams.num_steps, num_centers, 2), dtype=torch.float32, device=device)
     amountOfParticlesPerCircle = torch.empty((simParams.num_steps, num_centers), dtype=torch.int32, device=device)
