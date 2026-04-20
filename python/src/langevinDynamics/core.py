@@ -97,6 +97,13 @@ def computeMasks(positions, centers, radius):
     
     return masks
 
+# Reflect particles that are inside a circle with radius are back outside. 
+def reflect(positions, simParams, reflectionVar = 1.05):
+    norms_new = torch.norm(positions, dim=1)
+    inside = norms_new < simParams.R
+    if inside.any() and simParams.reflectiveObject:
+        positions[inside] = reflectionVar * simParams.R * positions[inside] / norms_new[inside].unsqueeze(1)
+
 def doSimulation(positions, centers, simParams, device):
     if simParams.score == 'AngeloScore':
         return doSimulationAngelo(positions, centers, simParams, device)
@@ -107,7 +114,7 @@ def doSimulation(positions, centers, simParams, device):
 
 # ─── Main simulation loop ─────
 def doSimulationAngelo(positions, centers, simParams, device):
-    reflectionVar = 1.05  # 1.01: particles stick to the border. 
+    print("Angelo's algorithm is running...")
     num_centers = centers.shape[0]
     avg_positions = torch.empty((simParams.num_steps, num_centers, 2), dtype=torch.float32, device=device)
     amountOfParticlesPerCircle = torch.empty((simParams.num_steps, num_centers), dtype=torch.int32, device=device)
@@ -129,10 +136,7 @@ def doSimulationAngelo(positions, centers, simParams, device):
         new_positions = positions + drift * simParams.dt + noise
         
         # Reflect particles
-        norms_new = torch.norm(new_positions, dim=1)
-        inside = norms_new < simParams.R
-        if inside.any() and simParams.reflectiveObject:
-            new_positions[inside] = reflectionVar * simParams.R * new_positions[inside] / norms_new[inside].unsqueeze(1)
+        reflect(new_positions, simParams)
         
         mask = computeMasks(positions, centers, simParams.small_region_radius)
         driftOfCircles = compute_log_density_gradient(centers, simParams.weightsXinf, simParams.mu_Xinf, simParams.inv_covariances_T, simParams.det_T, device)  # (2,)
@@ -148,10 +152,7 @@ def doSimulationAngelo(positions, centers, simParams, device):
                 print(f"No particles in center: {center} at time step {i}")
                 
         # Reflect circles
-        norms_new = torch.norm(centers, dim=1)
-        inside = norms_new < simParams.R
-        if inside.any() and simParams.reflectiveObject:
-            centers[inside] = reflectionVar * simParams.R * centers[inside] / norms_new[inside].unsqueeze(1)
+        reflect(centers, simParams)
 
         amountOfParticlesPerCircle[i, :] = particlesPerCircle
         avg_positions[i, :, :] = centers.clone()
@@ -169,7 +170,7 @@ def doSimulationAngelo(positions, centers, simParams, device):
 
 # ─── Main simulation loop ─────
 def doSimulationKlaas(positions, centers, simParams, device):
-    reflectionVar = 1.002
+    print("Klaas' algorithm is running...")
     num_centers = centers.shape[0]
     avg_positions = torch.empty((simParams.num_steps, num_centers, 2), dtype=torch.float32, device=device)
     amountOfParticlesPerCircle = torch.empty((simParams.num_steps, num_centers), dtype=torch.int32, device=device)
@@ -189,13 +190,7 @@ def doSimulationKlaas(positions, centers, simParams, device):
         # Add noise
         noise = sqrt(2) * sqrt(simParams.dt) * torch.randn_like(positions)
         new_positionsTilde = positions + noise
-        
-        # Reflect particles
-        # norms_new = torch.norm(new_positions, dim=1)
-        # inside = norms_new < simParams.R
-        # if inside.any() and simParams.reflectiveObject:
-        #     new_positions[inside] = reflectionVar * simParams.R * new_positions[inside] / norms_new[inside].unsqueeze(1)
-        
+                
         mask = computeMasks(new_positionsTilde, centers, simParams.small_region_radius)
         driftOfCircles = compute_log_density_gradient(centers, simParams.weightsXinf, simParams.mu_Xinf, simParams.inv_covariances_T, simParams.det_T, device)  # (2,)
         particlesPerCircle = mask.sum(dim=0)
@@ -210,12 +205,12 @@ def doSimulationKlaas(positions, centers, simParams, device):
                 
         # Add drift
         new_positions = new_positionsTilde + drift * simParams.dt
+        
+        # Reflect particles
+        reflect(new_positions, simParams)
                 
         # Reflect circles
-        # norms_new = torch.norm(centers, dim=1)
-        # inside = norms_new < simParams.R
-        # if inside.any() and simParams.reflectiveObject:
-        #     centers[inside] = reflectionVar * simParams.R * centers[inside] / norms_new[inside].unsqueeze(1)
+        reflect(centers, simParams)
 
         amountOfParticlesPerCircle[i, :] = particlesPerCircle
         avg_positions[i, :, :] = centers.clone()
