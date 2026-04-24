@@ -4,7 +4,7 @@ import scipy.io
 import numpy as np
 
 class SimulationParameters:
-    def __init__(self, dt, num_steps, weightsXinf, mu_Xinf, inv_covariances_T, det_T, R, reflectiveObject, small_region_radius, score):
+    def __init__(self, dt, num_steps, weightsXinf, mu_Xinf, inv_covariances_T, det_T, R, reflectiveObject, small_region_radius, score, Xinf = True):
         self.dt = dt
         self.num_steps = num_steps
         self.weightsXinf = weightsXinf
@@ -15,29 +15,33 @@ class SimulationParameters:
         self.reflectiveObject = reflectiveObject
         self.small_region_radius = small_region_radius
         self.score = score
+        self.Xinf = Xinf
 
 # ─── Function to compute log-density gradient of final GMM ─────
-def compute_log_density_gradient(positions, weights, means, inv_covariances, det, device):
-    diff = positions.unsqueeze(1) - means.unsqueeze(0)          # (N, K, 2)
-    exponent = -0.5 * torch.einsum('nki,kij,nkj->nk', diff, inv_covariances, diff)
-    
-    log_norm = -0.5 * (2 * torch.log(torch.tensor(2 * torch.pi, device=device)) + torch.log(det))
-    log_densities = log_norm.unsqueeze(0) + exponent
-    
-    # Log-sum-exp trick
-    max_log = torch.max(log_densities, dim=1, keepdim=True)[0]
-    log_p_final = max_log + torch.logsumexp(log_densities - max_log, dim=1, keepdim=True)
-    
-    densities = torch.exp(log_densities - max_log)
-    p_final = torch.sum(weights.unsqueeze(0) * densities, dim=1, keepdim=True)
-    
-    grad_components = -torch.einsum('nki,kij->nkj', diff, inv_covariances)
-    grad_components *= densities.unsqueeze(2)
-    
-    grad_p_final = torch.einsum('k,nkj->nj', weights, grad_components)
-    grad_log_p = grad_p_final / (p_final + 1e-10)
-    
-    return grad_log_p
+def compute_log_density_gradient(positions, weights, means, inv_covariances, det, XinfBool, device):
+    if XinfBool:
+        
+        diff = positions.unsqueeze(1) - means.unsqueeze(0)          # (N, K, 2)
+        exponent = -0.5 * torch.einsum('nki,kij,nkj->nk', diff, inv_covariances, diff)
+        
+        log_norm = -0.5 * (2 * torch.log(torch.tensor(2 * torch.pi, device=device)) + torch.log(det))
+        log_densities = log_norm.unsqueeze(0) + exponent
+        
+        # Log-sum-exp trick
+        max_log = torch.max(log_densities, dim=1, keepdim=True)[0]
+        
+        densities = torch.exp(log_densities - max_log)
+        p_final = torch.sum(weights.unsqueeze(0) * densities, dim=1, keepdim=True)
+        
+        grad_components = -torch.einsum('nki,kij->nkj', diff, inv_covariances)
+        grad_components *= densities.unsqueeze(2)
+        
+        grad_p_final = torch.einsum('k,nkj->nj', weights, grad_components)
+        grad_log_p = grad_p_final / (p_final + 1e-10)
+        
+        return grad_log_p
+    else:
+        return torch.zeros_like(positions)
 
 def loadMATLABGMM(filename, varName, device):
 
@@ -128,6 +132,7 @@ def doSimulationAngelo(positions, centers, simParams, device):
             simParams.mu_Xinf,
             simParams.inv_covariances_T,
             simParams.det_T, 
+            simParams.Xinf,
             device
         )
         
@@ -139,7 +144,7 @@ def doSimulationAngelo(positions, centers, simParams, device):
         reflect(new_positions, simParams)
         
         mask = computeMasks(positions, centers, simParams.small_region_radius)
-        driftOfCircles = compute_log_density_gradient(centers, simParams.weightsXinf, simParams.mu_Xinf, simParams.inv_covariances_T, simParams.det_T, device)  # (2,)
+        driftOfCircles = compute_log_density_gradient(centers, simParams.weightsXinf, simParams.mu_Xinf, simParams.inv_covariances_T, simParams.det_T, simParams.Xinf, device)  # (2,)
         particlesPerCircle = mask.sum(dim=0)
         
         # Update position of circles
@@ -184,6 +189,7 @@ def doSimulationKlaas(positions, centers, simParams, device):
             simParams.mu_Xinf,
             simParams.inv_covariances_T,
             simParams.det_T, 
+            simParams.Xinf,
             device
         )
         
@@ -192,7 +198,7 @@ def doSimulationKlaas(positions, centers, simParams, device):
         new_positionsTilde = positions + noise
                 
         mask = computeMasks(new_positionsTilde, centers, simParams.small_region_radius)
-        driftOfCircles = compute_log_density_gradient(centers, simParams.weightsXinf, simParams.mu_Xinf, simParams.inv_covariances_T, simParams.det_T, device)  # (2,)
+        driftOfCircles = compute_log_density_gradient(centers, simParams.weightsXinf, simParams.mu_Xinf, simParams.inv_covariances_T, simParams.det_T, simParams.Xinf, device)  # (2,)
         particlesPerCircle = mask.sum(dim=0)
         
         # Update position of circles
