@@ -12,6 +12,7 @@ rho0 = @(x,y) (1/(2*pi*sqrt(det(Cov0)))) * exp(-0.5 * ([x - mu0(1); y - mu0(2)]'
 rhoInf = @(x,y) (1/(2*pi*sqrt(det(Cov0)))) * exp(-0.5 * ([x - mu1(1); y - mu1(2)]' / Cov0) * [x - mu1(1); y - mu1(2)]);
 
 for algFolder = ["/dataEuler", "/dataMidpoint"]
+% for algFolder = ["/dataMidpoint"]
 
     %% Plot particle paths
     files = dir(fullfile(scriptDir + algFolder + "/output/",'saveData*.mat'));
@@ -58,17 +59,17 @@ for algFolder = ["/dataEuler", "/dataMidpoint"]
     set(gca, 'Color', 'none');               % axes background (transparent)
     set(gca, 'XColor','k', 'YColor','k', 'ZColor','k');    % axes
     set(findall(gcf,'Type','text'), 'Color','k');          % text objects
-    legend('Interpreter', 'latex', 'Color', 'white', 'EdgeColor', 'black', 'TextColor', 'black', 'FontSize', 19, 'Location', 'northwest');
+    lgd = legend('Interpreter', 'latex', 'FontSize', 19, 'Location', 'northwest');
     xlabel('x', 'FontSize', fontsize);
     ylabel('y', 'FontSize', fontsize);
     axis equal;
-    cb = colorbar;
-    cb.Color = 'k';                        % sets tick labels to black
-    cb.Label.Color = 'k';                  % sets label text to black (if any)
-    cb.Ticks = cb.Ticks;                   % forces refresh in some MATLAB versions
-    set(gcf,'Position',[100 100 1200 800]);
+    ax.Toolbar.Visible = 'off';
+
+    lgd.Position(3) = lgd.Position(3) * 1.15;  % Increase width
+
+    drawnow;
+
     pdfFile = saveDir + "/figures/" + "paths" + n + ".pdf";
-    
     exportgraphics(gcf, pdfFile, 'ContentType', 'vector', 'BackgroundColor', 'white');
     
     %% Plot distribution
@@ -77,7 +78,7 @@ for algFolder = ["/dataEuler", "/dataMidpoint"]
         filepath = fullfile(files(k).folder, files(k).name);
         load(filepath);
         close all;
-    
+
         % Generate figures
         figure(1);
         sz = 15;   
@@ -94,23 +95,19 @@ for algFolder = ["/dataEuler", "/dataMidpoint"]
         cb.Ticks = cb.Ticks;                   % forces refresh in some MATLAB versions
         xlim([inputs_method.Omega(1, 1) inputs_method.Omega(2, 1)]*0.6);
         ylim([inputs_method.Omega(1, 2) inputs_method.Omega(2, 2)]*0.6);
-        legend('Interpreter', 'latex', 'Color', 'white', 'EdgeColor', 'black', 'TextColor', 'black', 'FontSize', 19, 'Location', 'northwest');
+        lgd = legend('Interpreter', 'latex', 'FontSize', 19, 'Location', 'northwest');
+        lgd.Position(3) = lgd.Position(3) * 1.15;  % Increase width
         xlabel('x', 'FontSize', fontsize);
         ylabel('y', 'FontSize', fontsize);
         axis equal;
         ax = gca;
         ax.FontSize = fontsize;
-        set(gca, 'Color', 'none');               % axes background (transparent)
-        set(gca, 'XColor','k', 'YColor','k', 'ZColor','k');    % axes
-        set(findall(gcf,'Type','text'), 'Color','k');          % text objects
+        drawnow;
         pdfFile = saveDir + "/figures/" + "plot" + n + ".pdf";
-        set(gcf,'Position',[100 100 1200 800]);
         exportgraphics(gcf, pdfFile, 'ContentType', 'vector', 'BackgroundColor', 'white');
-    
-    
         filepath
         t+dt
-    
+
     end
 end
 

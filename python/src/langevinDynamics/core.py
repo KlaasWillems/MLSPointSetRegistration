@@ -4,7 +4,7 @@ import scipy.io
 import numpy as np
 
 class SimulationParameters:
-    def __init__(self, dt, num_steps, weightsXinf, mu_Xinf, inv_covariances_T, det_T, R, reflectiveObject, small_region_radius, score, Xinf = True):
+    def __init__(self, dt, num_steps, weightsXinf, mu_Xinf, inv_covariances_T, det_T, R, reflectiveObject, small_region_radius, score, Xinf = True, saveDir = None, saveStep = None):
         self.dt = dt
         self.num_steps = num_steps
         self.weightsXinf = weightsXinf
@@ -16,6 +16,8 @@ class SimulationParameters:
         self.small_region_radius = small_region_radius
         self.score = score
         self.Xinf = Xinf
+        self.saveDir = saveDir  # Location to save the positions of the circles and particles during the simulation
+        self.saveStep = saveStep  # Time indices at which to save the positions of the circles and particles
 
 # ─── Function to compute log-density gradient of final GMM ─────
 def compute_log_density_gradient(positions, weights, means, inv_covariances, det, XinfBool, device):
@@ -102,11 +104,11 @@ def computeMasks(positions, centers, radius):
     return masks
 
 # Reflect particles that are inside a circle with radius are back outside. 
-def reflect(positions, simParams, reflectionVar = 1.05):
+def reflect(positions, simParams, reflectionVar = 1.00001):
     norms_new = torch.norm(positions, dim=1)
     inside = norms_new < simParams.R
     if inside.any() and simParams.reflectiveObject:
-        positions[inside] = reflectionVar * simParams.R * positions[inside] / norms_new[inside].unsqueeze(1)
+        positions[inside] = (2*simParams.R - norms_new[inside].unsqueeze(1)) * positions[inside] / norms_new[inside].unsqueeze(1)
 
 def doSimulation(positions, centers, simParams, device):
     if simParams.score == 'AngeloScore':
@@ -120,8 +122,11 @@ def doSimulation(positions, centers, simParams, device):
 def doSimulationAngelo(positions, centers, simParams, device):
     print("Angelo's algorithm is running...")
     num_centers = centers.shape[0]
-    avg_positions = torch.empty((simParams.num_steps, num_centers, 2), dtype=torch.float32, device=device)
-    amountOfParticlesPerCircle = torch.empty((simParams.num_steps, num_centers), dtype=torch.int32, device=device)
+    avg_positions = torch.empty((simParams.num_steps + 1, num_centers, 2), dtype=torch.float32, device=device)
+    amountOfParticlesPerCircle = torch.empty((simParams.num_steps + 1, num_centers), dtype=torch.int32, device=device)
+    
+    avg_positions[0, :, :] = centers.clone()
+    amountOfParticlesPerCircle[0, :] = computeMasks(positions, centers, simParams.small_region_radius).sum(dim=0)
     
     for i in range(simParams.num_steps):
         
@@ -159,8 +164,8 @@ def doSimulationAngelo(positions, centers, simParams, device):
         # Reflect circles
         reflect(centers, simParams)
 
-        amountOfParticlesPerCircle[i, :] = particlesPerCircle
-        avg_positions[i, :, :] = centers.clone()
+        amountOfParticlesPerCircle[i+1, :] = particlesPerCircle
+        avg_positions[i+1, :, :] = centers.clone()
 
         if i % 50 == 0:  # reduced printing frequency
             drift_norms = torch.norm(drift, dim=1)
@@ -168,6 +173,9 @@ def doSimulationAngelo(positions, centers, simParams, device):
             
         # Update positions for next iteration
         positions = new_positions
+        
+        if simParams.saveDir is not None and i in simParams.saveStep:
+            scipy.io.savemat(f"{simParams.saveDir}simData_{i}.mat", {"positions": positions, "paths": avg_positions})
         
     final_positions = positions.cpu().numpy()
 

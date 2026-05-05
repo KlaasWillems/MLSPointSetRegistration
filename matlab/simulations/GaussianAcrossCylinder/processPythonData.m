@@ -1,7 +1,7 @@
 clear;
 scriptDir = fileparts(mfilename('fullpath'));
 fontsize = 25;
-load(scriptDir + "/pythonData/avgPaths.mat");
+load(scriptDir + "/pythonData/gaussianAdvectionDiffusionData.mat");
 
 mu0 = [-2, 0];
 std0 = sqrt(0.1);
@@ -33,28 +33,55 @@ ylim([Omega(1, 2) Omega(2, 2)]*0.6);
 for i = 1:length(particleIndices)
     if i == 1
         plot(avg_paths(:, i, 1), avg_paths(:, i, 2), '-k', 'DisplayName', 'Particle paths')
-        plot(avg_paths(end, i, 1), avg_paths(end, i, 2), '.r', 'DisplayName', 'End point', 'MarkerSize', ms)
-        plot(avg_paths(1, i, 1), avg_paths(1, i, 2), '.b', 'DisplayName', 'Start point', 'MarkerSize', ms)
     else
         plot(avg_paths(:, i, 1), avg_paths(:, i, 2), '-k', 'HandleVisibility', 'off')
-        plot(avg_paths(end, i, 1), avg_paths(end, i, 2), '.r', 'HandleVisibility', 'off', 'MarkerSize', ms)
-        plot(avg_paths(1, i, 1), avg_paths(1, i, 2), '.b', 'HandleVisibility', 'off', 'MarkerSize', ms)
     end
 end
 ax = gca;
 ax.FontSize = fontsize;
-set(gca, 'Color', 'none');               % axes background (transparent)
-set(gca, 'XColor','k', 'YColor','k', 'ZColor','k');    % axes
-set(findall(gcf,'Type','text'), 'Color','k');          % text objects
-legend('Interpreter', 'latex', 'Color', 'white', 'EdgeColor', 'black', 'TextColor', 'black', 'FontSize', 19, 'Location', 'north');
+lgd = legend('Interpreter', 'latex', 'FontSize', 19, 'Location', 'northwest');
 xlabel('x', 'FontSize', fontsize);
 ylabel('y', 'FontSize', fontsize);
 axis equal;
-cb = colorbar;
-cb.Color = 'k';                        % sets tick labels to black
-cb.Label.Color = 'k';                  % sets label text to black (if any)
-cb.Ticks = cb.Ticks;                   % forces refresh in some MATLAB versions
-set(gcf,'Position',[100 100 1200 800]);
-pdfFile = scriptDir + "/pythonData/" + "pythonPaths.pdf";
 
+lgd.Position(3) = lgd.Position(3) * 1.2;  % Increase width
+
+pdfFile = scriptDir + "/pythonData/" + "pythonPaths.pdf";
 exportgraphics(gcf, pdfFile, 'ContentType', 'vector', 'BackgroundColor', 'white');
+
+%% Plot particle distributions
+plotAmount = 10000;
+for i = [-1, -2, 6, 15, 33, 69]
+    if i == -1
+        positions = initial_positions;
+        fileName = "/positions_0.pdf";
+    elseif i == -2
+        positions = final_positions;
+        fileName = "/positions_140.pdf";
+    else
+        load(scriptDir + sprintf("/pythonData/simData_%i.mat", i));
+        fileName = sprintf("/positions_%i.pdf", i);
+    end
+
+    figure(1); clf(1);
+    hold on
+    plot(positions(1:plotAmount, 1), positions(1:plotAmount, 2), '.', 'Color', 'magenta', 'DisplayName', '$\mathbf{X}_i^n$')
+    rad = 0:pi/50:2*pi;
+    plot(C(1) + Cr*cos(rad), C(2) + Cr*sin(rad), '-r' ,'DisplayName', 'Obstacle')
+    fcontour(rho0, [Omega(1, 1), Omega(2, 1)], 'DisplayName', '$\rho_{0}$ (left)')
+    fcontour(rhoInf, [Omega(1, 1), Omega(2, 1)], 'DisplayName', '$\rho_{\infty}$ (right)')
+    hold off
+    ax = gca;
+    ax.FontSize = fontsize;
+    lgd = legend('Interpreter', 'latex', 'FontSize', 19, 'Location', 'northwest');
+    xlabel('x', 'FontSize', fontsize);
+    ylabel('y', 'FontSize', fontsize);
+    xlim([Omega(1, 1) Omega(2, 1)]*0.6);
+    ylim([Omega(1, 2) Omega(2, 2)]*0.6);
+
+    axis equal;
+    pdfFile = scriptDir + "/pythonData/" + fileName;
+    exportgraphics(gcf, pdfFile, 'ContentType', 'vector', 'BackgroundColor', 'white');
+
+
+end
