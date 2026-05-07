@@ -1,0 +1,35 @@
+# This CITATION.cff file was generated with cffinit.
+# Visit https://bit.ly/cffinit to generate yours today!
+
+cff-version: 1.2.0
+title: Moving Least Squares Method for Point Set Registration
+message: >-
+  If you use this software, please cite it using the
+  metadata from this file.
+type: software
+authors:
+  - given-names: Klaas
+    family-names: Willems
+    email: klaas.willems@kuleuven.be
+    affiliation: KU Leuven
+    orcid: 'https://orcid.org/0009-0004-8527-4621'
+  - given-names: 'Tommaso '
+    family-names: Taddei
+    email: tommaso.taddei@uniroma1.it
+    affiliation: Sapienza University of Rome
+    orcid: 'https://orcid.org/0000-0002-3134-3730'
+  - given-names: Angelo
+    family-names: Iollo
+    email: angelo.iollo@math.u-bordeaux.fr
+    affiliation: Institut de Mathématiques de Bordeaux
+  - given-names: 'Giovanni '
+    family-names: Russo
+    email: giovanni.russo1@unict.it
+    affiliation: University of Catania
+    orcid: 'https://orcid.org/0000-0003-4215-1926'
+keywords:
+  - Moving least squares
+  - Fokker-Planck equation
+  - Langevin dynamics
+  - Point set registration
+license: MIT
