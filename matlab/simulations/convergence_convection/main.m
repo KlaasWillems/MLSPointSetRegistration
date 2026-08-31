@@ -48,7 +48,7 @@ for repeat = [1, 2] % repeat convergence analysis for two final times
     tspan = linspace(0, inputs.tmax, Nt);
 
     Ns = 2.^[7; 8; 9; 10; 11];
-    dts = (2^5)./Ns;
+    dts = 2./sqrt(Ns);
     algs = 2;
     ErrPDF = zeros(length(Ns), algs);
     ErrPosX = zeros(length(Ns), algs);
@@ -70,12 +70,10 @@ for repeat = [1, 2] % repeat convergence analysis for two final times
         % Integrate exact characteristic equation
         ODE45ParticleTrajectories = zeros(Ns(simN), 2, Nt);
         options = odeset('RelTol',1e-10,'AbsTol',1e-10);
-        for pi = 1:Ns(simN)
-            [~, xODE] = ode45(@(t,x) characteristic(t, x, mu0, mu1, std0, std1), tspan, [x0(pi); y0(pi)]);
-            ODE45ParticleTrajectories(pi, :, :) = xODE.';
+        for j = 1:Ns(simN)
+            [~, xODE] = ode45(@(t,x) characteristic(t, x, mu0, mu1, std0, std1), tspan, [x0(j); y0(j)], options);
+            ODE45ParticleTrajectories(j, :, :) = xODE.';
         end
-        finalX = squeeze(ODE45ParticleTrajectories(:, 1, end));
-        finalY = squeeze(ODE45ParticleTrajectories(:, 2, end));
     
         for simAlg = 1:algs
     
@@ -103,7 +101,9 @@ for repeat = [1, 2] % repeat convergence analysis for two final times
             varX = ct*(std0^2) + (std1^2)*(1.0 - ct);
             Sigma = [varX 0; 0 varX];
             exactSol = mvnpdf([xn, yn], mu, Sigma);
-        
+            finalX = mu(1) + sqrt(varX/(std0*std0))*(x0 - mu0(1));
+            finalY = mu(2) + sqrt(varX/(std0*std0))*(y0 - mu0(2));
+
             % Save error of density
             ErrPDF(simN, simAlg) = norm(exp(sfn) - exactSol, 1)/norm(exactSol, 1);
     

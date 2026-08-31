@@ -68,51 +68,51 @@ for algFolder = ["/dataKDE", "/dataGMM"]
     exportgraphics(gcf, pdfFile, 'ContentType', 'vector', 'BackgroundColor', 'white');
     
     %% Plot distribution
-    % for k = 1:numel(files)
-    %     filepath = fullfile(files(k).folder, files(k).name);
-    %     load(filepath);
-    %     close all;
-    % 
-    %     % Generate figures
-    %     figure(1);
-    %     fontsize = 25;
-    %     sz = 15;
-    %     rad = 0:pi/50:2*pi;
-    %     plot(inputs_method.C(1) + inputs_method.Cr*cos(rad), inputs_method.C(2) + inputs_method.Cr*sin(rad), '-r' ,'DisplayName', 'Obstacle')
-    %     hold on
-    %     scatter(x, y, sz, exp(Sf), 'filled', 'DisplayName', '$x^n_i$');
-    %     % scatter(xmirror, ymirror, sz, '.r');
-    %     % quiver(x, y, sx, sy)
-    %     if strcmp(algFolder, "/dataGMM")
-    %         contour(xg, yg, FGMM0, 5, 'DisplayName', '$\rho_{0}$ (left)');
-    %         contour(xg, yg, FGMMInf, 5, 'DisplayName', '$\rho_{\infty}$ (right)');
-    %     else
-    %         contour(xg, yg, FGMM0KDE, 5, 'DisplayName', '$\rho_{0}$ (left)');
-    %         contour(xg, yg, FGMMInfKDE, 5, 'DisplayName', '$\rho_{\infty}$ (right)');
-    %     end
-    %     cb = colorbar;
-    %     cb.Color = 'k';                        % sets tick labels to black
-    %     cb.Label.Color = 'k';                  % sets label text to black (if any)
-    %     cb.Ticks = cb.Ticks;                   % forces refresh in some MATLAB versions
-    %     xlim([inputs_method.Omega(1, 1) inputs_method.Omega(2, 1)]);
-    %     ylim([inputs_method.Omega(1, 2) inputs_method.Omega(2, 2)]);
-    %     lgd = legend('Interpreter', 'latex', 'FontSize', 19);
-    %     xlabel('x', 'FontSize', fontsize);
-    %     ylabel('y', 'FontSize', fontsize);
-    %     ax = gca;
-    %     ax.FontSize = fontsize;
-    % 
-    %     axis equal;
-    %     drawnow;
-    % 
-    %     lgd.Position(1) = lgd.Position(1) * 0.95;
-    %     lgd.Position(3) = lgd.Position(3) * 1.15;  % Increase width
-    % 
-    %     pdfFile = scriptDir + algFolder + "/figures/" + "plot" + n + ".pdf";
-    %     exportgraphics(gcf, pdfFile, 'ContentType', 'vector', 'BackgroundColor', 'white');
-    % 
-    %     filepath
-    %     t+dt
-    % 
-    % end
+    for k = 1:numel(files)
+        filepath = fullfile(files(k).folder, files(k).name);
+        load(filepath);
+        close all;
+
+        % Generate figures
+        figure(1);
+        fontsize = 25;
+        sz = 15;
+        rad = 0:pi/50:2*pi;
+        plot(inputs_method.C(1) + inputs_method.Cr*cos(rad), inputs_method.C(2) + inputs_method.Cr*sin(rad), '-r' ,'DisplayName', 'Obstacle')
+        hold on
+        scatter(x, y, sz, exp(Sf), 'filled', 'DisplayName', '$x^n_i$');
+        % scatter(xmirror, ymirror, sz, '.r');
+        % quiver(x, y, sx, sy)
+        if strcmp(algFolder, "/dataGMM")
+            contour(xg, yg, FGMM0, 5, 'DisplayName', '$\rho_{0}$ (left)');
+            contour(xg, yg, FGMMInf, 5, 'DisplayName', '$\rho_{\infty}$ (right)');
+        else
+            contour(xg, yg, FGMM0KDE, 5, 'DisplayName', '$\rho_{0}$ (left)');
+            contour(xg, yg, FGMMInfKDE, 5, 'DisplayName', '$\rho_{\infty}$ (right)');
+        end
+        cb = colorbar;
+        cb.Color = 'k';                        % sets tick labels to black
+        cb.Label.Color = 'k';                  % sets label text to black (if any)
+        cb.Ticks = cb.Ticks;                   % forces refresh in some MATLAB versions
+        xlim([inputs_method.Omega(1, 1) inputs_method.Omega(2, 1)]);
+        ylim([inputs_method.Omega(1, 2) inputs_method.Omega(2, 2)]);
+        lgd = legend('Interpreter', 'latex', 'FontSize', 19);
+        xlabel('x', 'FontSize', fontsize);
+        ylabel('y', 'FontSize', fontsize);
+        ax = gca;
+        ax.FontSize = fontsize;
+
+        axis equal;
+        drawnow;
+
+        lgd.Position(1) = lgd.Position(1) * 0.95;
+        lgd.Position(3) = lgd.Position(3) * 1.15;  % Increase width
+
+        pdfFile = scriptDir + algFolder + "/figures/" + "plot" + n + ".pdf";
+        exportgraphics(gcf, pdfFile, 'ContentType', 'vector', 'BackgroundColor', 'white');
+
+        filepath
+        t+dt
+
+    end
 end

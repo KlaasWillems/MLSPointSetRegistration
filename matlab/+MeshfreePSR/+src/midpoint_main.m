@@ -47,27 +47,23 @@ while t<tmax
     SinfHalf = inputs_method.Sinf_fun(xHalf, yHalf);
     
     % Recompute MLS matrices here
-    [Gradx, Grady, S, ~, ~, ~] = MeshfreePSR.src.computeDiscreteOperators(xHalf, yHalf, inputs_method, inputs_method.meshfreeMethod);
+    [Gradx, Grady, SHalf, ~, ~, ~] = MeshfreePSR.src.computeDiscreteOperators(xHalf, yHalf, inputs_method, inputs_method.meshfreeMethod);
 
     % Density equation 
-    A = I - dt2*S;
-    b = Sf - dt2*S*SinfHalf;
+    A = I - dt2*SHalf;
+    b = Sf - dt2*SHalf*SinfHalf;
     D = spdiags(1./sqrt(sum(abs(A),2)),0,size(A,1),size(A,1));
     SfHalf = D * ((D*A*D) \ (D*b));
 
     % Characteristic equation 
     x = x + dt*(Gradx*(SinfHalf-SfHalf));
     y = y + dt*(Grady*(SinfHalf-SfHalf));
-    Sinf = inputs_method.Sinf_fun(x, y);
-    
-    % Recompute MLS matrices here
-    [Gradx, Grady, S, Sxx, Syy, Sxy] = MeshfreePSR.src.computeDiscreteOperators(x, y, inputs_method, inputs_method.meshfreeMethod);
 
-    % Density equation 
-    A = I - dt*S;
-    b = Sf - dt*S*Sinf;
-    D = spdiags(1./sqrt(sum(abs(A),2)),0,size(A,1),size(A,1));
-    Sf = D * ((D*A*D) \ (D*b));
+    % Density equation
+    Sf = Sf + dt*SHalf*(SfHalf-SinfHalf);
+    
+    % Recompute MLS matrices at the final particle positions for the next time step
+    [Gradx, Grady, ~, Sxx, Syy, Sxy] = MeshfreePSR.src.computeDiscreteOperators(x, y, inputs_method, inputs_method.meshfreeMethod);
 
     particlePaths(:, 1, n+1) = x(inputs_method.traceParticles);
     particlePaths(:, 2, n+1) = y(inputs_method.traceParticles);
@@ -121,4 +117,3 @@ end
 
 
 end
-

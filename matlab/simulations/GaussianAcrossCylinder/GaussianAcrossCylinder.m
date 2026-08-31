@@ -65,8 +65,8 @@ delete(scriptDir + "/dataMidpoint/figures/*.pdf");
 inputs.saveDir = scriptDir + "/dataMidpoint/output/";
 inputs.vidName = scriptDir + "/dataMidpoint/output/vid";
 
-inputs.maxNb = 60;
+inputs.maxNb = 20;
 inputs.meshfreeMethod = 1;
 tic;
-[xn,yn,sfn] = MeshfreePSR.src.euler_main_boundaries(x0, y0, rhof0, inputs);
+[xn,yn,sfn] = MeshfreePSR.src.midpoint_main_boundaries(x0, y0, rhof0, inputs);
 toc;

@@ -35,7 +35,7 @@ inputs.vid = 0;
 %% Do simulation
 
 Ns = 2.^[5; 6; 7; 8; 9; 10];
-dts = (2^6)./Ns;
+dts = (2^2)./sqrt(Ns);
 algs = 2;
 
 ErrVarX = zeros(length(Ns), algs);
@@ -97,8 +97,8 @@ for sim = 1:length(Ns)
         ErrPDF(sim, alg) = norm(exp(sfn) - exactSol, 1)/norm(exactSol, 1);
         ErrMeanX(sim, alg) = abs(mean(xn));
         ErrMeanY(sim, alg) = abs(mean(yn));
-        ErrVarX(sim, alg) = abs(covn(1, 1) - varn^2)/varn^2;
-        ErrVarY(sim, alg) = abs(covn(2, 2) - varn^2)/varn^2;
+        ErrVarX(sim, alg) = abs(covn(1, 1) - varn)/varn;
+        ErrVarY(sim, alg) = abs(covn(2, 2) - varn)/varn;
     end
 end
 %%

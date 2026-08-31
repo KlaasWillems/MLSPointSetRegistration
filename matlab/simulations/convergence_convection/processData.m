@@ -11,22 +11,20 @@ for repeat = 1:2
         saveDir = scriptDir + "/data2/";
     end
     
-    %% Plot errors
+    %% Plot errors (density)
     close all;
     fontsize = 25;
     figure(1);
     plot(Ns, ErrPDF(:, 1), '.-', 'DisplayName', 'Midpoint + MLS $\rho$', 'MarkerSize', 14, 'Color', 'blue', 'LineWidth', lw)
     hold on
-    plot(Ns, ErrPDF(:, 2), '.-', 'DisplayName', 'Euler + MLS $\rho$', 'MarkerSize', 14, 'Color', 'green', 'LineWidth', lw)
-    plot(Ns, ErrPosX(:, 1), '.--', 'DisplayName', 'Midpoint + MLS $x$', 'MarkerSize', 14, 'Color', 'blue', 'LineWidth', lw)
-    plot(Ns, ErrPosX(:, 2), '.--', 'DisplayName', 'Euler + MLS $x$', 'MarkerSize', 14, 'Color', 'green', 'LineWidth', lw)
-    plot(Ns, 200./Ns, 'DisplayName', '2nd order ref.', 'Color', 'black')
-    plot(Ns, 2000./(Ns.^(3/2)), 'DisplayName', '3rd order ref.', 'Color', 'black')
+    plot(Ns, ErrPDF(:, 2), '.-', 'DisplayName', 'Euler + MLS $\rho$', 'MarkerSize', 14, 'Color', '#008000', 'LineWidth', lw)
+    plot(Ns, 75./sqrt(Ns), 'DisplayName', '1st order ref.', 'Color', 'black')
+    plot(Ns, 50./Ns, 'DisplayName', '2nd order ref.', 'Color', 'black')
     xscale log
     yscale log
     xlabel("$N$", 'fontsize', fontsize, 'Interpreter', 'latex')
     ylabel("$L_1$ error", 'fontsize', fontsize, 'Interpreter', 'latex')
-    lgd = legend('Interpreter', 'latex', 'fontsize', fontsize, 'Location', 'northeast');
+    lgd = legend('Interpreter', 'latex', 'fontsize', fontsize, 'Location', 'southwest');
     
     grid on
     ax = gca;
@@ -36,8 +34,34 @@ for repeat = 1:2
     lgd.Position(1) = lgd.Position(1) * 0.95;
     lgd.Position(3) = lgd.Position(3) * 1.15;  % Increase width
 
-    convergenceFigLocation = fullfile(saveDir, 'convergence.pdf');
+    convergenceFigLocation = fullfile(saveDir, 'convergenceRho.pdf');
     exportgraphics(gcf, convergenceFigLocation, 'ContentType', 'vector', 'BackgroundColor', 'white');
+
+    %% Plot errors (location)
+    figure(2);
+    plot(Ns, ErrPosX(:, 1), '.--', 'DisplayName', 'Midpoint + MLS $x$', 'MarkerSize', 14, 'Color', 'blue', 'LineWidth', lw)
+    hold on
+    plot(Ns, ErrPosX(:, 2), '.--', 'DisplayName', 'Euler + MLS $x$', 'MarkerSize', 14, 'Color', '#008000', 'LineWidth', lw)
+
+    plot(Ns, 0.1./sqrt(Ns), 'DisplayName', '1st order ref.', 'Color', 'black')
+    plot(Ns, 0.1./Ns, 'DisplayName', '2nd order ref.', 'Color', 'black')
+    xscale log
+    yscale log
+    xlabel("$N$", 'fontsize', fontsize, 'Interpreter', 'latex')
+    ylabel("$L_1$ error", 'fontsize', fontsize, 'Interpreter', 'latex')
+    lgd = legend('Interpreter', 'latex', 'fontsize', fontsize, 'Location', 'southwest');
+    
+    grid on
+    ax = gca;
+    ax.FontSize = fontsize;
+    hold off
+    drawnow;
+    lgd.Position(1) = lgd.Position(1) * 0.95;
+    lgd.Position(3) = lgd.Position(3) * 1.15;  % Increase width
+
+    convergenceFigLocation = fullfile(saveDir, 'convergenceX.pdf');
+    exportgraphics(gcf, convergenceFigLocation, 'ContentType', 'vector', 'BackgroundColor', 'white');
+
     
     %% Plot paths
     
@@ -53,17 +77,17 @@ for repeat = 1:2
     Z0 = reshape(z0, size(x));
     Z1 = reshape(z1, size(x));
     
-    figure(2); clf(2)
+    figure(3); clf(3)
     hold on
     for pIndex = [10, 50, 75, 100, 126, 165, 200, 215, 250]
         plot(squeeze(ODEParticlePaths(pIndex, 1, :)), squeeze(ODEParticlePaths(pIndex, 2, :)), '-', 'HandleVisibility','off', 'Color','black', 'LineWidth', lw)
-        plot(squeeze(MLSParticlePaths(pIndex, 1, :)), squeeze(MLSParticlePaths(pIndex, 2, :)), '--', 'HandleVisibility','off', 'Color','green', 'LineWidth', lw)
+        plot(squeeze(MLSParticlePaths(pIndex, 1, :)), squeeze(MLSParticlePaths(pIndex, 2, :)), '--', 'HandleVisibility','off', 'Color','#008000', 'LineWidth', lw)
         plot(squeeze(LABFMParticlePaths(pIndex, 1, :)), squeeze(LABFMParticlePaths(pIndex, 2, :)), '--', 'HandleVisibility','off', 'Color','blue', 'LineWidth', lw)
     end
     contour(x, y, Z0, 5, 'LineColor', 'red');
     contour(x, y, Z1, 5, 'LineColor', 'cyan');
     hODE = plot(nan, nan, '-', 'Color','black');
-    hMLS = plot(nan, nan, '--', 'Color','green');
+    hMLS = plot(nan, nan, '--', 'Color','#008000');
     hLABFM = plot(nan, nan, '--', 'Color',' blue');
     hrho0 = plot(nan, nan, '-', 'Color', 'red'); 
     hrhoinf = plot(nan, nan, '--', 'Color','cyan');

@@ -79,7 +79,7 @@ while t<tmax
     % Compute meshfree discrete operators at time n+1/2
     [GradxHalf, GradyHalf, SHalf, ~, ~, ~, I, ~, ~] = MeshfreePSR.src.computeDiscreteOperators_boundaries(xHalf, yHalf, inputs_method, inputs_method.meshfreeMethod);
 
-    % Implicit part: Sf = (I - dt*S)\(Sf-dt*S*Sinf) (solve with implicit Euler)
+    % Implicit midpoint stage for the density equation
     SinfHalf = inputs_method.Sinf_fun(xHalf, yHalf);
     SinfFullHalf = vertcat(SinfHalf, SinfHalf(~I));
     SfFull = vertcat(Sf, Sf(~I));
@@ -95,18 +95,17 @@ while t<tmax
     v = dt*[sx, sy];
     [x, y] = MeshfreePSR.src.bnd_reflection([x, y], v(1:N, :), inputs_method.fd);
 
-    % Compute meshfree discrete operators at time n+1
-    [Gradx, Grady, S, Sxx, Syy, Sxy, I, xmirror, ymirror] = MeshfreePSR.src.computeDiscreteOperators_boundaries(x, y, inputs_method, inputs_method.meshfreeMethod);
+    % Complete the density update using the derivative at time n+1/2
+    dSfFullHalf = SHalf*(SfFullHalf-SinfFullHalf);
+    Sf = Sf + dt*dSfFullHalf(1:N);
 
-    % Implicit part: Sf = (I - dt*S)\(Sf-dt*S*Sinf) (solve with implicit Euler)
+    % Compute meshfree discrete operators at time n+1 for the next time step
+    [Gradx, Grady, ~, Sxx, Syy, Sxy, I, xmirror, ymirror] = MeshfreePSR.src.computeDiscreteOperators_boundaries(x, y, inputs_method, inputs_method.meshfreeMethod);
+
+    % Extend the target and numerical log-densities to the new ghost particles
     Sinf = inputs_method.Sinf_fun(x, y);
     SinfFull = vertcat(Sinf, Sinf(~I));
     SfFull = vertcat(Sf, Sf(~I));
-    A = speye(length(SfFull)) - dt*S;
-    b = SfFull - dt*S*SinfFull;
-    D = spdiags(1./sqrt(sum(abs(A),2)),0,size(A,1),size(A,1));
-    SfFull = D * ((D*A*D) \ (D*b));
-    Sf = SfFull(1:N);
 
     particlePaths(:, 1, n+1) = x;
     particlePaths(:, 2, n+1) = y;
@@ -169,4 +168,3 @@ if inputs_method.vid
 end
 
 end
-

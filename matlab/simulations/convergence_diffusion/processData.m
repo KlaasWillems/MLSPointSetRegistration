@@ -8,15 +8,16 @@ lw = 1.5;
 close all;
 
 f1 = figure(1);
-plot(Ns, ErrPDF(:, 1), '.-', 'DisplayName', 'Euler + MLS', 'MarkerSize', 14, 'Color', 'green', 'LineWidth', lw)
+plot(Ns, ErrPDF(:, 1), '.-', 'DisplayName', 'Euler + MLS', 'MarkerSize', 14, 'Color', '#008000', 'LineWidth', lw)
 hold on
 plot(Ns, ErrPDF(:, 2), '.-', 'DisplayName', 'Midpoint + MLS', 'MarkerSize', 14, 'Color', 'blue', 'LineWidth', lw)
-plot(Ns, 50./Ns, 'DisplayName', '2nd order ref.', 'Color', 'black')
+plot(Ns, 5./sqrt(Ns), 'DisplayName', '1st order ref.', 'Color', 'black')
+plot(Ns, 5./Ns, 'DisplayName', '2nd order ref.', 'Color', 'black')
 xscale log
 yscale log
 xlabel("N",'fontsize',fontsize)
 ylabel("L_1 Error",'fontsize',fontsize)
-lgd = legend; 
+lgd = legend("Location", "southwest"); 
 set(lgd, 'FontSize', fontsize);
 drawnow;
 ax = gca;
@@ -34,10 +35,10 @@ figure(2)
 axis equal
 for ind = 1:5:254
     if ind == 1
-        plot(squeeze(plottedParticlePaths1(ind, 1, :)), squeeze(plottedParticlePaths1(ind, 2, :)), '-', 'Color', 'green', 'DisplayName', 'Euler + MLS', 'LineWidth', lw)
+        plot(squeeze(plottedParticlePaths1(ind, 1, :)), squeeze(plottedParticlePaths1(ind, 2, :)), '-', 'Color', '#008000', 'DisplayName', 'Euler + MLS', 'LineWidth', lw)
         hold on
     else
-        plot(squeeze(plottedParticlePaths1(ind, 1, :)), squeeze(plottedParticlePaths1(ind, 2, :)), '-', 'Color', 'green', 'HandleVisibility', 'off', 'LineWidth', lw)
+        plot(squeeze(plottedParticlePaths1(ind, 1, :)), squeeze(plottedParticlePaths1(ind, 2, :)), '-', 'Color', '#008000', 'HandleVisibility', 'off', 'LineWidth', lw)
     end
 end
 for ind = 1:5:254

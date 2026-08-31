@@ -30,7 +30,7 @@ for i = 1:51
     end
 end
 plot(initial_positions(1:maxParticlePlot, 1), initial_positions(1:maxParticlePlot, 2), '.', 'Color', 'yellow', 'DisplayName', '$\mathbf{X}^{0}_i$', 'LineWidth', lw)
-plot(final_positions(1:maxParticlePlot, 1), final_positions(1:maxParticlePlot, 2), '.', 'Color', 'cyan', 'DisplayName', '$\mathbf{X}^{140}_i$', 'LineWidth', lw)
+plot(final_positions(1:maxParticlePlot, 1), final_positions(1:maxParticlePlot, 2), '.', 'Color', 'cyan', 'DisplayName', '$\mathbf{X}^{200}_i$', 'LineWidth', lw)
 
 hold off
 ax = gca;
