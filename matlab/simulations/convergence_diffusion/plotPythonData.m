@@ -2,7 +2,12 @@
 clear;
 close all;
 scriptDir = fileparts(mfilename('fullpath'));
-load(scriptDir + "/pythonData/gaussianDiffusionData.mat")
+sim = 1;
+if sim == 1
+    load(scriptDir + "/pythonData/gaussianDiffusionData.mat")
+else
+    load(scriptDir + "/pythonData/gaussianDiffusionDataAdaptive.mat")
+end
 load(scriptDir + "/data/errors.mat");
 
 %%
@@ -24,9 +29,9 @@ for ind = 1:5:254
 end
 for i = 1:51
     if i == 1
-        plot(avg_paths(:, i, 1), avg_paths(:, i, 2), '-', 'Color', 'magenta', 'DisplayName', 'Monte Carlo', 'LineWidth', lw);
+        plot(avg_paths(:, i, 1), avg_paths(:, i, 2), '--', 'Color', 'magenta', 'DisplayName', 'Monte Carlo', 'LineWidth', lw);
     else
-        plot(avg_paths(:, i, 1), avg_paths(:, i, 2), '-', 'Color', 'magenta', 'HandleVisibility', 'off', 'LineWidth', lw);
+        plot(avg_paths(:, i, 1), avg_paths(:, i, 2), '--', 'Color', 'magenta', 'HandleVisibility', 'off', 'LineWidth', lw);
     end
 end
 plot(initial_positions(1:maxParticlePlot, 1), initial_positions(1:maxParticlePlot, 2), '.', 'Color', 'yellow', 'DisplayName', '$\mathbf{X}^{0}_i$', 'LineWidth', lw)
@@ -49,5 +54,10 @@ ax.YAxisLocation = 'origin';
 ax.Box = 'off';
 ax.Toolbar.Visible = 'off';
 lgd.Position(3) = lgd.Position(3) * 1.1;  % Increase width
-pathsFigLocation = fullfile(scriptDir, 'data/particlePathsPython.pdf');
+if sim == 1
+    pathsFigLocation = fullfile(scriptDir, 'data/particlePathsPython.pdf');
+else
+    pathsFigLocation = fullfile(scriptDir, 'data/particlePathsAdaptivePython.pdf');
+end
+
 exportgraphics(gcf, pathsFigLocation, 'ContentType', 'vector', 'BackgroundColor', 'white');
