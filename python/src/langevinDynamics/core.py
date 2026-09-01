@@ -3,8 +3,12 @@ import torch
 import scipy.io
 import numpy as np
 
+RREF = 2.15443469e-01
+RHOREF = 7.43962967e-02
+NREF = 10_000_000
+
 class SimulationParameters:
-    def __init__(self, dt, num_steps, weightsXinf, mu_Xinf, inv_covariances_T, det_T, R, reflectiveObject, small_region_radius, score, Xinf = True, saveDir = None, saveStep = None):
+    def __init__(self, dt, num_steps, weightsXinf, mu_Xinf, inv_covariances_T, det_T, R, reflectiveObject, small_region_radius, score, Xinf = True, saveDir = None, saveStep = None, variableRadius = False, minRegionRadius = 1e-3, maxRegionRadius = 1.0):
         self.dt = dt
         self.num_steps = num_steps
         self.weightsXinf = weightsXinf
@@ -16,8 +20,14 @@ class SimulationParameters:
         self.small_region_radius = small_region_radius
         self.score = score
         self.Xinf = Xinf
+        self.variableRadius = variableRadius
+        self.minRegionRadius = minRegionRadius
+        self.maxRegionRadius = maxRegionRadius
         self.saveDir = saveDir  # Location to save the positions of the circles and particles during the simulation
         self.saveStep = saveStep  # Time indices at which to save the positions of the circles and particles
+
+        if minRegionRadius <= 0 or maxRegionRadius < minRegionRadius:
+            raise ValueError("The radius bounds must satisfy 0 < minRegionRadius <= maxRegionRadius.")
 
 # ─── Function to compute log-density gradient of final GMM ─────
 def compute_log_density_gradient(positions, weights, means, inv_covariances, det, XinfBool, device):
@@ -91,15 +101,23 @@ def sample_gmm_efficient(weights, means, covs, n_samples):
 
     return samples
 
-def computeMasks(positions, centers, radius):
+def computeMasks(positions, centers, radii):
     num_particles = positions.shape[0]
     num_centers = centers.shape[0]
     masks = torch.empty((num_particles, num_centers), dtype=torch.bool, device=positions.device)
+    radii = torch.as_tensor(radii, dtype=positions.dtype, device=positions.device)
+
+    if radii.ndim == 0:
+        radii = radii.repeat(num_centers)
+    else:
+        radii = radii.reshape(-1)
+        if radii.numel() != num_centers:
+            raise ValueError("The number of radii must equal the number of centers.")
     
     for j in range(num_centers):
         center = centers[j]
         dist_squared = torch.sum((positions - center) ** 2, dim=1)
-        masks[:, j] = dist_squared < radius ** 2
+        masks[:, j] = dist_squared < radii[j] ** 2
     
     return masks
 
@@ -117,6 +135,21 @@ def doSimulation(positions, centers, simParams, device):
         return doSimulationKlaas(positions, centers, simParams, device) 
     else:
         raise ValueError(f"Unknown algorithm: {simParams.alg}") 
+    
+def computeRadius(positions, centers, simParams, device, num_centers, oldRadius, oldAmountOfParticlesPerCell):
+    num_centers = centers.shape[0]
+    Nparticles = positions.shape[0]
+    if simParams.variableRadius:
+        particle_counts = oldAmountOfParticlesPerCell.to(dtype=oldRadius.dtype)
+        positive_counts = particle_counts > 0
+        safe_counts = torch.clamp(particle_counts, min=1)
+        rho = safe_counts / (Nparticles * torch.pi * torch.pow(oldRadius, 2))
+        estimated_radius = RREF * torch.pow(NREF * RHOREF / (Nparticles * rho), 0.125)
+        enlarged_radius = 2.0 * oldRadius
+        radii = torch.where(positive_counts, estimated_radius, enlarged_radius)
+        return torch.clamp(radii, min=simParams.minRegionRadius, max=simParams.maxRegionRadius)
+    else:
+        return torch.full((num_centers,), simParams.small_region_radius, dtype=positions.dtype, device=device)
 
 # ─── Main simulation loop ─────
 def doSimulationAngelo(positions, centers, simParams, device):
@@ -126,9 +159,12 @@ def doSimulationAngelo(positions, centers, simParams, device):
     amountOfParticlesPerCircle = torch.empty((simParams.num_steps + 1, num_centers), dtype=torch.int32, device=device)
     
     avg_positions[0, :, :] = centers.clone()
-    amountOfParticlesPerCircle[0, :] = computeMasks(positions, centers, simParams.small_region_radius).sum(dim=0)
+    radii = torch.ones((num_centers,), dtype=torch.float32, device=device)*simParams.small_region_radius
+    amountOfParticlesPerCircle[0, :] = computeMasks(positions, centers, radii).sum(dim=0)
     
     for i in range(simParams.num_steps):
+        
+        radii = computeRadius(positions, centers, simParams, device, num_centers, radii, amountOfParticlesPerCircle[i, :])
         
         # Compute drift = ∇ log p_final(x)
         drift = compute_log_density_gradient(
@@ -148,7 +184,7 @@ def doSimulationAngelo(positions, centers, simParams, device):
         # Reflect particles
         reflect(new_positions, simParams)
         
-        mask = computeMasks(positions, centers, simParams.small_region_radius)
+        mask = computeMasks(positions, centers, radii)
         driftOfCircles = compute_log_density_gradient(centers, simParams.weightsXinf, simParams.mu_Xinf, simParams.inv_covariances_T, simParams.det_T, simParams.Xinf, device)  # (2,)
         particlesPerCircle = mask.sum(dim=0)
         
@@ -157,7 +193,7 @@ def doSimulationAngelo(positions, centers, simParams, device):
             if particlesPerCircle[center].item() > 0:
                 shifts = positions[mask[:, center], :] - centers[center, :]  # (num_particles_in_circle, 2)
                 meanShiftVector = shifts.mean(dim=0)  # (, 2)
-                centers[center, :] += simParams.dt*( driftOfCircles[center, :] - 4*meanShiftVector/(simParams.small_region_radius**2))
+                centers[center, :] += simParams.dt*( driftOfCircles[center, :] - 4*meanShiftVector/(radii[center]**2))
             else:
                 print(f"No particles in center: {center} at time step {i}")
                 
