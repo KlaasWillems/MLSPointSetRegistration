@@ -14,8 +14,8 @@ mu1 = [0, 0];
 
 inputs.flag_plot = 1;
 inputs.its_plot = 10;
-inputs.vid = 0;
 inputs.Omega = [-1, -1; 1, 1]*8;
+inputs.frameRate = 2;
 
 inputs.Sinf_fun    = @(x,y)   -log(2*pi*std1^2)    -1/(2*std1^2)*((x-mu1(1)).^2 + (y-mu1(2)).^2 );
 inputs.dSinf_fun   = @(x,y) [(mu1(1)-x)/std1^2,(mu1(2)-y)/std1^2];
@@ -41,7 +41,9 @@ end
 for repeat = [1, 2] % repeat convergence analysis for two final times
     if repeat == 1
         inputs.tmax = 4.5;
+        inputs.vid = 0;
     elseif repeat == 2
+        inputs.vid = 1;
         inputs.tmax = 6.5;
     end
     Nt = 100;
@@ -56,6 +58,7 @@ for repeat = [1, 2] % repeat convergence analysis for two final times
 
     for simN = 1:length(Ns)
         
+        inputs.vidName = scriptDir + "/data2/sim" + simN;
         inputs.dt = dts(simN);
         inputs.N = Ns(simN);
     

@@ -20,6 +20,7 @@ close all;
 std0 = 1;
 mu = [0, 0];
 Sigma = [std0^2, 0; 0, std0^2]; 
+scriptDir = fileparts(mfilename('fullpath'));
 
 inputs.tmax = 10;
 inputs.Omega = [-30, -30; 30, 30];
@@ -30,7 +31,7 @@ inputs.Sinf_fun = @(x,y) zeros(size(x));
 inputs.d2dSinf_fun = @(x,y) zeros(1, 3);
 inputs.dSinf_fun = @(x,y) zeros(length(x), 2);
 inputs.LapSinf_fun = @(x,y) zeros(size(x));
-inputs.vid = 0;
+inputs.frameRate = 2;
 
 %% Do simulation
 
@@ -71,10 +72,14 @@ for sim = 1:length(Ns)
         if alg == 1
             inputs.maxNb = 16;
             inputs.meshfreeMethod = 1; % use MLS and Euler method
+            inputs.vid = 0;
             [xn, yn, sfn, particlePaths] = MeshfreePSR.src.euler_main(x0, y0, rhof0, inputs); 
         elseif alg == 2
             inputs.maxNb = 16;
             inputs.meshfreeMethod = 1; % use MLS and Midpoint method
+            inputs.vid = 1;
+            inputs.vidName = scriptDir + "/vids/sim" + sim;
+
             [xn, yn, sfn, particlePaths] = MeshfreePSR.src.midpoint_main(x0, y0, rhof0, inputs);
         end
     
@@ -99,8 +104,8 @@ for sim = 1:length(Ns)
         ErrMeanY(sim, alg) = abs(mean(yn));
         ErrVarX(sim, alg) = abs(covn(1, 1) - varn)/varn;
         ErrVarY(sim, alg) = abs(covn(2, 2) - varn)/varn;
+
     end
 end
 %%
-scriptDir = fileparts(mfilename('fullpath'));
 save(scriptDir + "/data/errors.mat")
